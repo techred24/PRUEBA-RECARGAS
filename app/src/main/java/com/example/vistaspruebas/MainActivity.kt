@@ -1,5 +1,6 @@
 package com.example.vistaspruebas
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
@@ -13,6 +14,10 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         //setContentView(R.layout.activity_main)
+
+        //intent = Intent(this, RecargasFormulario::class.java)
+        //startActivity(intent)
+        //finish()
     }
 
     override fun onResume() {
@@ -22,6 +27,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
     fun login() {
-        Toast.makeText(this, "TESTING", Toast.LENGTH_LONG).show()
+        var user = binding.etUser.text
+        var password = binding.etPassword.text
+        Toast.makeText(this, "user:$user, passaword: $password", Toast.LENGTH_LONG).show()
+        intent = Intent(this, RecargasFormulario::class.java)
+        startActivity(intent)
+        finish()
     }
 }

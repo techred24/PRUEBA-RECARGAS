@@ -72,6 +72,7 @@
             android:textColor="@color/black"
             />
         <EditText
+            android:id="@+id/etUser"
             android:layout_marginHorizontal="30dp"
             android:layout_gravity="center_horizontal"
             android:layout_width="match_parent"
@@ -83,6 +84,7 @@
             android:layout_marginTop="28dp"
             />
         <EditText
+            android:id="@+id/etPassword"
             android:layout_marginHorizontal="30dp"
             android:layout_gravity="center_horizontal"
             android:layout_width="match_parent"
