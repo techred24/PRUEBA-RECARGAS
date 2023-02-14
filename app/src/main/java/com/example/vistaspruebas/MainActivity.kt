@@ -5,6 +5,12 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
 import com.example.vistaspruebas.databinding.ActivityMainBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -27,11 +33,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
     fun login() {
-        var user = binding.etUser.text
-        var password = binding.etPassword.text
+        var user: String = binding.etUser.text.toString()
+        var password: String = binding.etPassword.text.toString()
         Toast.makeText(this, "user:$user, passaword: $password", Toast.LENGTH_LONG).show()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val call = getRetrofit().create(APIService::class.java).login(user, password)
+            //val puppies = call.body();
+            runOnUiThread {
+                println(call.body())
+                //var something = call.execute()
+                //println(something)
+                println("IMPRIMIENDO SOMETHING VARIABLE")
+            }
+        }
         intent = Intent(this, RecargasFormulario::class.java)
         startActivity(intent)
         finish()
     }
+    private fun getRetrofit(): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://demo.bustrack.mx/apsmg/api/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(getClient())
+            .build()
+    }
+    private fun getClient(): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(HeaderInterceptor())
+        .build()
 }
