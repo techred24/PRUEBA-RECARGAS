@@ -46,19 +46,28 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "user:$user, passaword: $password", Toast.LENGTH_LONG).show()
 
         CoroutineScope(Dispatchers.IO).launch {
-            val call = getRetrofit().create(APIService::class.java).login(user, password)
-            if (call.isSuccessful) {
+            //val call = getRetrofit().create(APIService::class.java).login(user, password)
+
+            //if (call.isSuccessful) {
+
+
                 //var response: UsuarioResponse? = null
                 //runOnUiThread {
                     //println(call.body())
                     //println(call.body()?.token)
                     //response = call.body()
-                    saveToken(call.body()?.token)
-                    println("IMPRIMIENDO EL TOKEN")
+
+
+                    //saveToken(call.body()?.token)
+                    //println("IMPRIMIENDO EL TOKEN")
+
+
                 //}
-            }
+
+
+            //}
         }
-        intent = Intent(this, RecargasFormulario::class.java)
+        intent = Intent(this, LeerTarjeta::class.java)
         startActivity(intent)
         finish()
     }

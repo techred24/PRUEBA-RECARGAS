@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:textAlignment="center"
     android:background="#0A304E"
-    tools:context=".RecargasFormulario">
+    tools:context=".LeerTarjeta">
 
     <TextView
         android:id="@+id/tvNombreEmpresa"
@@ -71,6 +71,7 @@
                 android:lineHeight="18dp"
                 />
                 <Button
+                    android:id="@+id/buttonLeerTarjeta"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Leer Tarjeta"

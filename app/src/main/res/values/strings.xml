@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">VistasPruebas</string>
+    <string name="selected_item">Selected:</string>
+
+    <string-array name="tipo_tarjeta">
+        <item>Adulto</item>
+        <item>Estudiante</item>
+        <item>Tercera Edad</item>
+
+    </string-array>
 </resources>
