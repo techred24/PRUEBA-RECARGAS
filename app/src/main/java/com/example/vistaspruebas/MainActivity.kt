@@ -43,12 +43,12 @@ class MainActivity : AppCompatActivity() {
     fun login() {
         var user: String = binding.etUser.text.toString()
         var password: String = binding.etPassword.text.toString()
-        Toast.makeText(this, "user:$user, passaword: $password", Toast.LENGTH_LONG).show()
+        //Toast.makeText(this, "user:$user, passaword: $password", Toast.LENGTH_LONG).show()
 
         CoroutineScope(Dispatchers.IO).launch {
-            //val call = getRetrofit().create(APIService::class.java).login(user, password)
+            val call = getRetrofit().create(APIService::class.java).login(user, password)
 
-            //if (call.isSuccessful) {
+            if (call.isSuccessful) {
 
 
                 //var response: UsuarioResponse? = null
@@ -65,7 +65,7 @@ class MainActivity : AppCompatActivity() {
                 //}
 
 
-            //}
+            }
         }
         intent = Intent(this, LeerTarjeta::class.java)
         startActivity(intent)

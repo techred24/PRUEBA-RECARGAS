@@ -1,7 +1,7 @@
 package com.example.vistaspruebas
 
-import android.annotation.SuppressLint
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.nfc.NfcAdapter
@@ -25,16 +25,14 @@ import java.nio.charset.StandardCharsets
 
 class FormularioRecargas : AppCompatActivity() {
     private lateinit var binding: ActivityFormularioRecargasBinding
-    private lateinit var mifare: MifareClassic
-    private var nfcAdapter: NfcAdapter? = null
-
+    private lateinit var nfcAdapter: NfcAdapter
+    private var context: Context? = this
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFormularioRecargasBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        //nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         //println(nfcAdapter)
         //println("LA VARIABLE NFC ADAPTER --------------------------------------")
         //println("${nfcAdapter!!.isEnabled} LO QUE CONTIENE EL IS ENABLED")
@@ -85,97 +83,98 @@ class FormularioRecargas : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        NfcAdapter.getDefaultAdapter(this).let {nfcAdapter ->
-            if (!nfcAdapter!!.isEnabled) {
-                Toast.makeText(this, "NFC apagado", Toast.LENGTH_SHORT).show()
-                return
+        println("Actividad reanudada")
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this)
+        if (nfcAdapter != null){
+            try {
+                nfcAdapter.isEnabled
+                println("${nfcAdapter.isEnabled} ESTA HABILITADO?")
+            } catch (e: Exception) {
+                println("HAY UN ERRORRRRRRRRRRRRRRRRRRRRRRRRRR")
             }
+            if (nfcAdapter.isEnabled) {
+                val launchIntent = Intent(this, this.javaClass)
+                //launchIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
-            val launchIntent = Intent(this, this.javaClass)
-            launchIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                val pendingIntent = PendingIntent.getActivity(this, 0, launchIntent, PendingIntent.FLAG_CANCEL_CURRENT)
+                val filters = arrayOf(IntentFilter(ACTION_TECH_DISCOVERED))
+                val techTypes = arrayOf(arrayOf(MifareClassic::class.java.name))
+                nfcAdapter.enableForegroundDispatch(this, pendingIntent, filters, techTypes)
 
-            val pendingIntent = PendingIntent.getActivity(
-                this, 0, launchIntent, PendingIntent.FLAG_CANCEL_CURRENT
-            )
-            val filters = arrayOf(IntentFilter(ACTION_TECH_DISCOVERED))
-            val techTypes = arrayOf(arrayOf(MifareClassic::class.java.name))
-            nfcAdapter.enableForegroundDispatch(
-                this, pendingIntent, filters, techTypes
-            )
+                //nfcAdapter.enableReaderMode()
+            }
+        } else {
+            println("No HAY NFC")
         }
 
     }
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-        if (intent != null) {
-            if (NfcAdapter.ACTION_TECH_DISCOVERED == intent.action) {
-                val tag = intent.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG)
-                MifareClassic.get(tag)?.let{mifareClassicTag ->
-                    mifare = mifareClassicTag
-                    mifareClassicTag.connect()
 
-                    try {
-                        var keyString = "C9855A4DA3E0";
-                        var length = keyString.length;
-                        var authKeyData = ByteArray(length / 2);
-                        for (i in 0 until length step 2) {
-                            authKeyData[i / 2] = (((Character.digit(keyString[i], 16).shl(4))
-                                    + Character.digit(keyString[i+1], 16)).toByte());
-                        }
-                        var authenticated = mifareClassicTag.authenticateSectorWithKeyA(3, authKeyData);
-                        println("$authenticated is Authenticated");
-                        if (authenticated) {
-
-                            var block = mifareClassicTag.readBlock(12);
-                            var stringResponse = String(block, Charsets.US_ASCII);
-                            println("$stringResponse LA RESPUESTA DEL BLOQUE EN STRING. EN FORMULARIO RECARGAS");
-                        }
-                    } catch (e: Exception) {
-                        println(e.message)
-                        println(e.stackTrace.toString())
-                        println("ERROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOR");
-                    }
-                    //mifareClassicTag.close()
-                }
-            }
-        }
+    override fun onRestart() {
+        super.onRestart()
+        println("Se reinicio la actividad")
+    }
+    override fun onPause() {
+        super.onPause()
+        nfcAdapter.disableForegroundDispatch(this)
+        //var manager = this.getSystemService(Context.NFC_SERVICE)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        mifare.close()
+        println("Actividad destruida")
     }
 
-    @SuppressLint("NewApi")
-    private fun readMifareClassic(tag: Tag) {
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        println("En onNewIntent")
+        if (intent != null) {
+            if (ACTION_TECH_DISCOVERED == intent.action) {
+                val tag = intent.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG)
+                readMifareClassic(tag)
+            }
+        }
+    }
+
+
+
+    private fun readMifareClassic(tag: Tag?) {
         println("ALCANZO LA FUNCION PARA LEER")
+        if (tag == null) return
         var mifareClassicTag: MifareClassic = MifareClassic.get(tag)
-        mifareClassicTag.connect()
+        if (mifareClassicTag.isConnected) {
+            println("YA ESTA CONECTADA ESTA MADRE")
+        } else {
+            println("NO ESTA CONECTADA. CONECTANDO")
+            mifareClassicTag.connect()
+        }
+
 
         try {
             var keyString = "C9855A4DA3E0";
             var length = keyString.length;
             var authKeyData = ByteArray(length / 2);
             for (i in 0 until length step 2) {
-                //println("$i EL ITERADOR");
                 authKeyData[i / 2] = (((Character.digit(keyString[i], 16).shl(4))
                         + Character.digit(keyString[i+1], 16)).toByte());
-                //println("AQUI ABAJO. SIN ERROR HASTA EL FINAL DE LA ITERACION");
             }
             var authenticated = mifareClassicTag.authenticateSectorWithKeyA(3, authKeyData);
             println("$authenticated is Authenticated");
             if (authenticated) {
-                //println("HEREEEEEEEEEEEEEEEEE INSIDE");
                 var block = mifareClassicTag.readBlock(12);
-                var stringResponse = String(block, StandardCharsets.US_ASCII);
+                var stringResponse = String(block, Charsets.US_ASCII);
                 println("$stringResponse LA RESPUESTA DEL BLOQUE EN STRING. EN FORMULARIO RECARGAS");
             }
+
         } catch (e: Exception) {
             println(e.message)
             println(e.stackTrace.toString())
             println("ERROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOR");
+        } finally {
+            if (mifareClassicTag.isConnected) {
+                println("DESCONECTANDO")
+                mifareClassicTag.close()
+            }
         }
-        mifareClassicTag.close()
     }
 
 }
