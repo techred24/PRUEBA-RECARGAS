@@ -11,36 +11,36 @@ import android.nfc.tech.MifareClassic
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Spinner
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.vistaspruebas.databinding.ActivityFormularioRecargasBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 //import kotlinx.coroutines.CoroutineScope
 //import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import java.nio.charset.StandardCharsets
 
 class FormularioRecargas : AppCompatActivity() {
     private lateinit var binding: ActivityFormularioRecargasBinding
     private lateinit var nfcAdapter: NfcAdapter
-    private var context: Context? = this
+    //private var context: Context? = this
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFormularioRecargasBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        //println(nfcAdapter)
-        //println("LA VARIABLE NFC ADAPTER --------------------------------------")
-        //println("${nfcAdapter!!.isEnabled} LO QUE CONTIENE EL IS ENABLED")
-
-        //if (nfcAdapter!!.isEnabled) {
-        //    Toast.makeText(this, "Listo para escanear", Toast.LENGTH_SHORT).show()
-        //}
-
 
         val tipoTarjeta = resources.getStringArray(R.array.tipo_tarjeta)
 
@@ -64,7 +64,29 @@ class FormularioRecargas : AppCompatActivity() {
                 }
             }
         }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            /*dataStore.edit {preferences->
+                println(preferences[stringPreferencesKey("token")])
+                println("RETRIEVING TOKEN")
+            }*/
+            var preferences = dataStore.data.first()
+            userToken = preferences[stringPreferencesKey("token")] ?: ""
+            val call = getRetrofit().create(APIService::class.java).getTarjetaData()
+            println(call.body())
+            println("LA RESPUESTA")
+        }
     }
+    private fun getRetrofit(): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://demo.bustrack.mx/apsmg/api/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(getClient())
+            .build()
+    }
+    private fun getClient(): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(HeaderInterceptor())
+        .build()
 
     override fun onStart() {
         super.onStart()
@@ -104,7 +126,7 @@ class FormularioRecargas : AppCompatActivity() {
                 //nfcAdapter.enableReaderMode()
             }
         } else {
-            println("No HAY NFC")
+            startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
         }
 
     }

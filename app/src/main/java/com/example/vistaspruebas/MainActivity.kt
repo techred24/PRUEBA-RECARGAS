@@ -17,8 +17,10 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import androidx.datastore.preferences.preferencesDataStore
+import retrofit2.Response
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "USER_TOKEN")
+var userToken = ""
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -44,29 +46,20 @@ class MainActivity : AppCompatActivity() {
         var user: String = binding.etUser.text.toString()
         var password: String = binding.etPassword.text.toString()
         //Toast.makeText(this, "user:$user, passaword: $password", Toast.LENGTH_LONG).show()
-
+        var call: Response<UsuarioResponse>
         CoroutineScope(Dispatchers.IO).launch {
-            val call = getRetrofit().create(APIService::class.java).login(user, password)
-
+            call = getRetrofit().create(APIService::class.java).login(user, password)
             if (call.isSuccessful) {
-
-
+                saveToken(call.body()?.token)
+                accessApp()
                 //var response: UsuarioResponse? = null
                 //runOnUiThread {
                     //println(call.body())
-                    //println(call.body()?.token)
-                    //response = call.body()
-
-
-                    //saveToken(call.body()?.token)
-                    //println("IMPRIMIENDO EL TOKEN")
-
-
                 //}
-
-
             }
         }
+    }
+    private fun accessApp() {
         intent = Intent(this, LeerTarjeta::class.java)
         startActivity(intent)
         finish()
@@ -74,18 +67,19 @@ class MainActivity : AppCompatActivity() {
 
     private suspend fun saveToken(token: String?) {
         dataStore.edit {preferences ->
+            println(token)
+            println("EL TOKEN QUE SE VA A GUARDAR")
             preferences[stringPreferencesKey("token")] = token ?: ""
         }
     }
-
-    private fun getRetrofit(): Retrofit {
+    fun getRetrofit(): Retrofit {
         return Retrofit.Builder()
             .baseUrl("https://demo.bustrack.mx/apsmg/api/")
             .addConverterFactory(GsonConverterFactory.create())
-            .client(getClient())
+            //.client(getClient())
             .build()
     }
-    private fun getClient(): OkHttpClient = OkHttpClient.Builder()
+    /*private fun getClient(): OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(HeaderInterceptor())
-        .build()
+        .build()*/
 }
