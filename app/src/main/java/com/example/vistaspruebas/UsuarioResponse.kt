@@ -25,33 +25,33 @@ data class UsuarioResponse(
 )
 
 data class Data(
-    val usuario: Usuario,
-    val token: String,
+    var usuario: Usuario,
+    var token: String,
 )
 
 data class Usuario(
-    val activo: Boolean,
+    var activo: Boolean,
     @SerializedName("_id") val id: String,
-    val nombre: String,
-    val telefono: String,
-    val email: String,
-    val usuario: String,
-    val fechanac: String,
-    val domicilio: String,
-    val genero: String,
-    val rol: Rol,
-    val ruta: Any?,
-    val fechaalta: String,
-    val usuarioalta: String,
-    val permisos: List<Any?>,
-    val fechaactu: String,
-    val tokenfb: Any?,
-    val conDocument: Any?,
+    var nombre: String,
+    var telefono: String,
+    var email: String,
+    var usuario: String,
+    var fechanac: String,
+    var domicilio: String,
+    var genero: String,
+    var rol: Rol,
+    var ruta: Any?,
+    var fechaalta: String,
+    var usuarioalta: String,
+    var permisos: List<Any?>,
+    var fechaactu: String,
+    var tokenfb: Any?,
+    var conDocument: Any?,
     @SerializedName("__v") val v: Long,
 )
 
 data class Rol(
     @SerializedName("_id") val id: String,
-    val nombre: String,
-    val codigo: String,
+    var nombre: String,
+    var codigo: String,
 )

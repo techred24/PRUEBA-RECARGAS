@@ -14,8 +14,8 @@ interface APIService {
     //@Multipart
 
     @FormUrlEncoded
-    @POST("usuario/loginV2/")
-    //@POST("session/login")
+    //@POST("usuario/loginV2/")
+    @POST("session/login")
     suspend fun login(@Field("usuario") usuario:String, @Field("contrasena") contrasena:String): Response<UsuarioResponse>
     //suspend fun login(@Part("usuario") usuario:String, @Part("contrasena") contrasena:String): Response<*>  <UsuarioResponse>
 

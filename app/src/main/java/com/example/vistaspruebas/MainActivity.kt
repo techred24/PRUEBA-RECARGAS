@@ -47,27 +47,27 @@ class MainActivity : AppCompatActivity() {
     fun login() {
         var user: String = binding.etUser.text.toString()
         var password: String = binding.etPassword.text.toString()
-        //Toast.makeText(this, "user:$user, passaword: $password", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "user:$user, passaword: $password", Toast.LENGTH_LONG).show()
         var call: Response<UsuarioResponse>
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 call = getRetrofit().create(APIService::class.java).login(user, password)
-                println(call)
+                println(call.body())
                 println("Lo que contiene call")
-                /*if (call.status) {
-                    /*if (call.body()?.success != false) {
-                        saveToken(call.body()?.token)
+                if (call.isSuccessful) {
+                    if (call.body()?.status == true) {
+                        saveToken(call.body()?.data?.token)
                         accessApp()
                     } else {
                         runOnUiThread {
                             Toast.makeText(this@MainActivity, "Usuario y/o contraseña incorrecto(s)", Toast.LENGTH_LONG).show()
                         }
-                    }*/
+                    }
                 } else {
                     runOnUiThread {
                         Toast.makeText(this@MainActivity, "Ocurrió un eror al intentar ingresar", Toast.LENGTH_LONG).show()
                     }
-                }*/
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 runOnUiThread {
