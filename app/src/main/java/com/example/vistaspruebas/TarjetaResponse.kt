@@ -23,7 +23,7 @@ data class Sectore(
     val accessBits: String,
     //@JsonProperty("_id")
     val id: String,
-    val sector: Long,
+    val sector: Int,
     val nombre: String,
     val keyA: String,
     val keyB: String,

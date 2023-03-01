@@ -1,15 +1,14 @@
 package com.example.vistaspruebas
 
+//import kotlinx.coroutines.CoroutineScope
+//import kotlinx.coroutines.Dispatchers
 import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.nfc.NfcAdapter
 import android.nfc.NfcAdapter.ACTION_TECH_DISCOVERED
 import android.nfc.Tag
 import android.nfc.tech.MifareClassic
-import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
@@ -17,25 +16,19 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Spinner
 import android.widget.Toast
-import androidx.annotation.RequiresApi
-import androidx.datastore.preferences.core.edit
+import androidx.appcompat.app.AppCompatActivity
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.vistaspruebas.databinding.ActivityFormularioRecargasBinding
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
-//import kotlinx.coroutines.CoroutineScope
-//import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.nio.charset.StandardCharsets
 
 class FormularioRecargas : AppCompatActivity() {
     private lateinit var binding: ActivityFormularioRecargasBinding
     private lateinit var nfcAdapter: NfcAdapter
-    //private var context: Context? = this
+    var sectoresInfo: List<Sectore>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,11 +63,18 @@ class FormularioRecargas : AppCompatActivity() {
                 println(preferences[stringPreferencesKey("token")])
                 println("RETRIEVING TOKEN")
             }*/
-            var preferences = dataStore.data.first()
-            userToken = preferences[stringPreferencesKey("token")] ?: ""
-            val call = getRetrofit().create(APIService::class.java).getTarjetaData()
-            println(call.body())
-            println("LA RESPUESTA")
+            try {
+                var preferences = dataStore.data.first()
+                userToken = preferences[stringPreferencesKey("token")] ?: ""
+                val call = getRetrofit().create(APIService::class.java).getTarjetaData()
+                var respuestaConfiguracionTarjeta = call.body()
+                sectoresInfo = respuestaConfiguracionTarjeta?.config?.get(0)?.sectores
+                //println(respuestaConfiguracionTarjeta?.config?.get(0)?.sectores)
+                println("LA RESPUESTA")
+            } catch (e: Exception) {
+                e.printStackTrace()
+                println("ERROR LA HACER FETCH PROBABLEMENTE")
+            }
         }
     }
     private fun getRetrofit(): Retrofit {
@@ -93,9 +93,9 @@ class FormularioRecargas : AppCompatActivity() {
         binding.etNombre.isEnabled = false
         binding.etApellidoPaterno.isEnabled = false
         binding.etApellidoMaterno.isEnabled = false
-        //binding.etCelular.isEnabled = false
-        //binding.etSaldoAgregar.isEnabled = false
-        //binding.etCortesia.isEnabled = false
+        binding.etCelular.isEnabled = false
+        binding.etSaldoAgregar.isEnabled = false
+        binding.etCortesia.isEnabled = false
         binding.etFolio.isEnabled = false
         binding.etID.isEnabled = false
         binding.sTipo.isEnabled = false
@@ -105,47 +105,38 @@ class FormularioRecargas : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        println("Actividad reanudada")
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         if (nfcAdapter != null){
             try {
                 nfcAdapter.isEnabled
-                println("${nfcAdapter.isEnabled} ESTA HABILITADO?")
             } catch (e: Exception) {
-                println("HAY UN ERRORRRRRRRRRRRRRRRRRRRRRRRRRR")
+                println("ERROR")
+                return
             }
             if (nfcAdapter.isEnabled) {
                 val launchIntent = Intent(this, this.javaClass)
                 //launchIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-
                 val pendingIntent = PendingIntent.getActivity(this, 0, launchIntent, PendingIntent.FLAG_CANCEL_CURRENT)
                 val filters = arrayOf(IntentFilter(ACTION_TECH_DISCOVERED))
                 val techTypes = arrayOf(arrayOf(MifareClassic::class.java.name))
                 nfcAdapter.enableForegroundDispatch(this, pendingIntent, filters, techTypes)
-
                 //nfcAdapter.enableReaderMode()
+            } else {
+                MainScope().launch {
+                    Toast.makeText(applicationContext, "NFC Apagado", Toast.LENGTH_LONG).show()
+                    delay(2500)
+                    startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
+                }
             }
         } else {
-            startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
+            Toast.makeText(applicationContext, "El dispositivo no soporta NFC", Toast.LENGTH_LONG).show()
         }
-
-    }
-
-    override fun onRestart() {
-        super.onRestart()
-        println("Se reinicio la actividad")
     }
     override fun onPause() {
         super.onPause()
         nfcAdapter.disableForegroundDispatch(this)
         //var manager = this.getSystemService(Context.NFC_SERVICE)
     }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        println("Actividad destruida")
-    }
-
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         println("En onNewIntent")
@@ -156,46 +147,29 @@ class FormularioRecargas : AppCompatActivity() {
             }
         }
     }
-
-
-
     private fun readMifareClassic(tag: Tag?) {
-        println("ALCANZO LA FUNCION PARA LEER")
         if (tag == null) return
-        var mifareClassicTag: MifareClassic = MifareClassic.get(tag)
-        if (mifareClassicTag.isConnected) {
-            println("YA ESTA CONECTADA ESTA MADRE")
-        } else {
-            println("NO ESTA CONECTADA. CONECTANDO")
-            mifareClassicTag.connect()
-        }
-
-
+        val bloquesParaAccesar = intArrayOf(12, 13, 14, 20, 10, 0, 16)
+        CardNFC.mifareClassicTag = MifareClassic.get(tag)
         try {
-            var keyString = "C9855A4DA3E0";
-            var length = keyString.length;
-            var authKeyData = ByteArray(length / 2);
-            for (i in 0 until length step 2) {
-                authKeyData[i / 2] = (((Character.digit(keyString[i], 16).shl(4))
-                        + Character.digit(keyString[i+1], 16)).toByte());
-            }
-            var authenticated = mifareClassicTag.authenticateSectorWithKeyA(3, authKeyData);
-            println("$authenticated is Authenticated");
-            if (authenticated) {
-                var block = mifareClassicTag.readBlock(12);
-                var stringResponse = String(block, Charsets.US_ASCII);
-                println("$stringResponse LA RESPUESTA DEL BLOQUE EN STRING. EN FORMULARIO RECARGAS");
-            }
+            if (sectoresInfo != null) {
+                var cardIsNew = CardNFC.cardIsNew(sectoresInfo!!)
+                println("LA TARJETA ES NUEVA? $cardIsNew")
+                if (cardIsNew == true) {
 
+                } else {
+                    readUsedCard(bloquesParaAccesar)
+                }
+            }
         } catch (e: Exception) {
             println(e.message)
             println(e.stackTrace.toString())
             println("ERROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOR");
-        } finally {
-            if (mifareClassicTag.isConnected) {
-                println("DESCONECTANDO")
-                mifareClassicTag.close()
-            }
+        }
+    }
+    private fun readUsedCard(bloques: IntArray) {
+        for (bloque in bloques) {
+            println("NUMERO DEL BLOQUE A ACCESAR CUANDO LA TARJETA ES NUEVA: $bloque")
         }
     }
 

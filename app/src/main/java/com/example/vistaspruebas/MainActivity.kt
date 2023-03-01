@@ -50,12 +50,16 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             call = getRetrofit().create(APIService::class.java).login(user, password)
             if (call.isSuccessful) {
-                saveToken(call.body()?.token)
-                accessApp()
-                //var response: UsuarioResponse? = null
-                //runOnUiThread {
-                    //println(call.body())
-                //}
+                if (call.body()?.success != false) {
+                    saveToken(call.body()?.token)
+                    accessApp()
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Usuario y/o contraseña incorrecto(s)", Toast.LENGTH_LONG).show()
+                    }
+                }
+            } else {
+                Toast.makeText(this@MainActivity, "Ocurrió un eror al intentar ingresar", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -67,8 +71,8 @@ class MainActivity : AppCompatActivity() {
 
     private suspend fun saveToken(token: String?) {
         dataStore.edit {preferences ->
-            println(token)
-            println("EL TOKEN QUE SE VA A GUARDAR")
+            //println(token)
+            //println("EL TOKEN QUE SE VA A GUARDAR")
             preferences[stringPreferencesKey("token")] = token ?: ""
         }
     }
@@ -76,10 +80,6 @@ class MainActivity : AppCompatActivity() {
         return Retrofit.Builder()
             .baseUrl("https://demo.bustrack.mx/apsmg/api/")
             .addConverterFactory(GsonConverterFactory.create())
-            //.client(getClient())
             .build()
     }
-    /*private fun getClient(): OkHttpClient = OkHttpClient.Builder()
-        .addInterceptor(HeaderInterceptor())
-        .build()*/
 }
