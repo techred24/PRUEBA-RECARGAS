@@ -2,7 +2,7 @@ package com.example.vistaspruebas
 import com.google.gson.annotations.SerializedName
 //import com.fasterxml.jackson.annotation.JsonProperty
 
-
+/*
 data class UsuarioResponse(
     @SerializedName("usuario") var usuario: Usuario,
     @SerializedName("empresa") var empresa: String,
@@ -10,15 +10,32 @@ data class UsuarioResponse(
     @SerializedName("message") var message: String,
     @SerializedName("token") var token: String,
 )
+*/
+//data class DogsResponse(
+//    @SerializedName("status") var status: String,
+//    @SerializedName("message") var images: List<String>
+//) {
+
+//}
+
+data class UsuarioResponse(
+    @SerializedName("status") var status: Boolean,
+    @SerializedName("data") var data: Data,
+    @SerializedName("message") var message: String,
+)
+
+data class Data(
+    val usuario: Usuario,
+    val token: String,
+)
 
 data class Usuario(
-    //@JsonProperty("_id")
-    val id: String,
+    val activo: Boolean,
+    @SerializedName("_id") val id: String,
     val nombre: String,
     val telefono: String,
     val email: String,
     val usuario: String,
-    val contrasena: String,
     val fechanac: String,
     val domicilio: String,
     val genero: String,
@@ -26,23 +43,15 @@ data class Usuario(
     val ruta: Any?,
     val fechaalta: String,
     val usuarioalta: String,
-    //@JsonProperty("__v")
-    val v: String,
     val permisos: List<Any?>,
     val fechaactu: String,
     val tokenfb: Any?,
-    val activo: Boolean,
     val conDocument: Any?,
+    @SerializedName("__v") val v: Long,
 )
 
 data class Rol(
-    val codigo: Long,
+    @SerializedName("_id") val id: String,
+    val nombre: String,
+    val codigo: String,
 )
-
-
-//data class DogsResponse(
-//    @SerializedName("status") var status: String,
-//    @SerializedName("message") var images: List<String>
-//) {
-
-//}

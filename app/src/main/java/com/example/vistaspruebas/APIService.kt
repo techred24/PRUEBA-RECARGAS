@@ -12,11 +12,14 @@ import retrofit2.http.Part
 
 interface APIService {
     //@Multipart
+
     @FormUrlEncoded
     @POST("usuario/loginV2/")
+    //@POST("session/login")
     suspend fun login(@Field("usuario") usuario:String, @Field("contrasena") contrasena:String): Response<UsuarioResponse>
-    //suspend fun login(@Part("usuario") usuario:String, @Part("contrasena") contrasena:String): Response<*>
+    //suspend fun login(@Part("usuario") usuario:String, @Part("contrasena") contrasena:String): Response<*>  <UsuarioResponse>
 
-    @GET("config/tarjeta")
+    @GET("configuraciontarjetas/pc")
+    //@GET("config/tarjeta")
     suspend fun getTarjetaData() : Response<TarjetaResponse>
 }

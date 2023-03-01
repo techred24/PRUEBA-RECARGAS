@@ -79,7 +79,7 @@ class FormularioRecargas : AppCompatActivity() {
     }
     private fun getRetrofit(): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://demo.bustrack.mx/apsmg/api/")
+            .baseUrl("https://demo.bustrack.mx/rec/api/")
             .addConverterFactory(GsonConverterFactory.create())
             .client(getClient())
             .build()

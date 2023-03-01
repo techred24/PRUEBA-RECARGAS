@@ -39,6 +39,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         binding.buttonLogin.setOnClickListener {
+            //usuario: vendedordorado
+            //contrasena:
             login()
         }
     }
@@ -48,18 +50,29 @@ class MainActivity : AppCompatActivity() {
         //Toast.makeText(this, "user:$user, passaword: $password", Toast.LENGTH_LONG).show()
         var call: Response<UsuarioResponse>
         CoroutineScope(Dispatchers.IO).launch {
-            call = getRetrofit().create(APIService::class.java).login(user, password)
-            if (call.isSuccessful) {
-                if (call.body()?.success != false) {
-                    saveToken(call.body()?.token)
-                    accessApp()
+            try {
+                call = getRetrofit().create(APIService::class.java).login(user, password)
+                println(call)
+                println("Lo que contiene call")
+                /*if (call.status) {
+                    /*if (call.body()?.success != false) {
+                        saveToken(call.body()?.token)
+                        accessApp()
+                    } else {
+                        runOnUiThread {
+                            Toast.makeText(this@MainActivity, "Usuario y/o contraseña incorrecto(s)", Toast.LENGTH_LONG).show()
+                        }
+                    }*/
                 } else {
                     runOnUiThread {
-                        Toast.makeText(this@MainActivity, "Usuario y/o contraseña incorrecto(s)", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@MainActivity, "Ocurrió un eror al intentar ingresar", Toast.LENGTH_LONG).show()
                     }
+                }*/
+            } catch (e: Exception) {
+                e.printStackTrace()
+                runOnUiThread {
+                    Toast.makeText(applicationContext, "Ocurrió un error al intentar acceder", Toast.LENGTH_LONG).show()
                 }
-            } else {
-                Toast.makeText(this@MainActivity, "Ocurrió un eror al intentar ingresar", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -78,7 +91,7 @@ class MainActivity : AppCompatActivity() {
     }
     fun getRetrofit(): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://demo.bustrack.mx/apsmg/api/")
+            .baseUrl("https://demo.bustrack.mx/rec/api/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
