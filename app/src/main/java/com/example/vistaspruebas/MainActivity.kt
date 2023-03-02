@@ -47,14 +47,19 @@ class MainActivity : AppCompatActivity() {
     fun login() {
         var user: String = binding.etUser.text.toString()
         var password: String = binding.etPassword.text.toString()
+        val userCredencials: MutableMap<String, String> = mutableMapOf(
+            "usuario" to user,
+            "contrasena" to password
+        )
         Toast.makeText(this, "user:$user, passaword: $password", Toast.LENGTH_LONG).show()
         var call: Response<UsuarioResponse>
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                call = getRetrofit().create(APIService::class.java).login(user, password)
-                println(call.body())
-                println("Lo que contiene call")
+                call = getRetrofit().create(APIService::class.java).login(userCredencials)
+                println("Solicitud exitosa? ${call.isSuccessful}")
                 if (call.isSuccessful) {
+                    //println(call.body())
+                    //println("Lo que contiene call")
                     if (call.body()?.status == true) {
                         saveToken(call.body()?.data?.token)
                         accessApp()
@@ -92,6 +97,7 @@ class MainActivity : AppCompatActivity() {
     fun getRetrofit(): Retrofit {
         return Retrofit.Builder()
             .baseUrl("https://demo.bustrack.mx/rec/api/")
+            //.baseUrl("http://192.168.1.6:4000/api/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }

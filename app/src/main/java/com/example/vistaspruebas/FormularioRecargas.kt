@@ -29,17 +29,17 @@ class FormularioRecargas : AppCompatActivity() {
     private lateinit var binding: ActivityFormularioRecargasBinding
     private lateinit var nfcAdapter: NfcAdapter
     var sectoresInfo: List<Sectore>? = null
-
+    var tipoTarjeta: Array<String>? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFormularioRecargasBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val tipoTarjeta = resources.getStringArray(R.array.tipo_tarjeta)
-
+        //tipoTarjeta = resources.getStringArray(R.array.tipo_tarjeta)
+/*
         val spinner: Spinner = binding.sTipo
         if(spinner != null) {
-            val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, tipoTarjeta)
+            val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, tipoTarjeta ?: arrayOf())
             spinner.adapter = adapter
 
             spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -56,7 +56,7 @@ class FormularioRecargas : AppCompatActivity() {
 
                 }
             }
-        }
+        }*/
 
         CoroutineScope(Dispatchers.IO).launch {
             /*dataStore.edit {preferences->
@@ -67,10 +67,38 @@ class FormularioRecargas : AppCompatActivity() {
                 var preferences = dataStore.data.first()
                 userToken = preferences[stringPreferencesKey("token")] ?: ""
                 val call = getRetrofit().create(APIService::class.java).getTarjetaData()
+                println(call.body())
                 var respuestaConfiguracionTarjeta = call.body()
-                sectoresInfo = respuestaConfiguracionTarjeta?.config?.get(0)?.sectores
-                //println(respuestaConfiguracionTarjeta?.config?.get(0)?.sectores)
-                println("LA RESPUESTA")
+                var subsidiosInfo = respuestaConfiguracionTarjeta?.data?.subsidios ?: return@launch
+                sectoresInfo = respuestaConfiguracionTarjeta?.data?.sectores
+                var nombreSubsidios: MutableList<String> = mutableListOf()
+                for (element in subsidiosInfo) {
+                    nombreSubsidios.add(element.nombre)
+                }
+                tipoTarjeta = nombreSubsidios.toTypedArray()
+                println("LA RESPUESTA DE LA CONFIGURACION DE LAS TARJETAS")
+                runOnUiThread {
+                    val spinner: Spinner = binding.sTipo
+                    if(spinner != null) {
+                        val adapter = ArrayAdapter(this@FormularioRecargas, android.R.layout.simple_spinner_item, tipoTarjeta ?: arrayOf())
+                        spinner.adapter = adapter
+
+                        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                            override fun onItemSelected(
+                                parent: AdapterView<*>?,
+                                view: View?,
+                                position: Int,
+                                id: Long
+                            ) {
+                                //Toast.makeText(this@FormularioRecargas, "${getString(R.string.selected_item)} ${tipoTarjeta[position]}", Toast.LENGTH_SHORT).show()
+                            }
+
+                            override fun onNothingSelected(parent: AdapterView<*>?) {
+
+                            }
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 println("ERROR LA HACER FETCH PROBABLEMENTE")
@@ -149,7 +177,6 @@ class FormularioRecargas : AppCompatActivity() {
     }
     private fun readMifareClassic(tag: Tag?) {
         if (tag == null) return
-        val bloquesParaAccesar = intArrayOf(12, 13, 14, 20, 10, 0, 16)
         CardNFC.mifareClassicTag = MifareClassic.get(tag)
         try {
             if (sectoresInfo != null) {
@@ -158,19 +185,54 @@ class FormularioRecargas : AppCompatActivity() {
                 if (cardIsNew == true) {
 
                 } else {
-                    readUsedCard(bloquesParaAccesar)
+                    readUsedCard()
                 }
             }
         } catch (e: Exception) {
-            println(e.message)
-            println(e.stackTrace.toString())
-            println("ERROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOR");
+            e.printStackTrace()
+            println("ERROR");
         }
     }
-    private fun readUsedCard(bloques: IntArray) {
-        for (bloque in bloques) {
-            println("NUMERO DEL BLOQUE A ACCESAR CUANDO LA TARJETA ES NUEVA: $bloque")
+    private fun readUsedCard() {
+        val bloques = intArrayOf(12, 13, 14, 20, 10, 0, 16)
+        var informacionUsuario = ""
+        var nombre = ""
+        var saldo = "$"
+        var folio = ""
+        var ID = ""
+        if (sectoresInfo == null) {
+            Toast.makeText(applicationContext, "No se pudo leer la tarjeta", Toast.LENGTH_LONG).show()
+            return
         }
+        for (bloque in bloques) {
+            val bloqueLeido = CardNFC.read(bloque, sectoresInfo!!)
+            if (bloque == 12 || bloque == 13 || bloque == 14) {
+                informacionUsuario += bloqueLeido
+            }
+            if (bloque == 20) {
+                saldo += bloqueLeido
+            }
+            if (bloque == 10) {
+                folio += bloqueLeido
+            }
+            if (bloque == 0) {
+                ID += bloqueLeido
+            }
+        }
+        for (j in 1 until informacionUsuario.split(" ").size - 2) {
+            nombre += " " + informacionUsuario.split(" ")[j]
+            nombre = nombre.trim()
+        }
+        binding.etCelular.setText(informacionUsuario.split(" ")[0])
+        binding.etNombre.setText(nombre)
+        binding.etApellidoPaterno.setText(informacionUsuario.split(" ")[informacionUsuario.split(" ").size - 2])
+        binding.etApellidoMaterno.setText(informacionUsuario.split(" ")[informacionUsuario.split(" ").size - 1])
+        binding.etSaldoDisponible.setText(saldo)
+        binding.etFolio.setText(folio)
+        binding.etID.setText(ID)
+        binding.etSaldoAgregar.isEnabled = true
+        binding.etCortesia.isEnabled = true
+        //binding.sTipo.isEnabled = true
     }
 
 }

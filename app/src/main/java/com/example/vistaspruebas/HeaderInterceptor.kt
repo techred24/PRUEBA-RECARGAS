@@ -13,7 +13,8 @@ class HeaderInterceptor: Interceptor {
         println("$userToken EL TOKEN")
         val request = chain.request().newBuilder()
             .addHeader(
-                "Accept", "application/json"
+                //"Accept", "application/json"
+                "Content-Type", "application/json"
             )
             .addHeader("authorization", "Bearer $token")
             .build()
