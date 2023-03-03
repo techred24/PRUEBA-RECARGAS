@@ -11,8 +11,6 @@ import android.nfc.Tag
 import android.nfc.tech.MifareClassic
 import android.os.Bundle
 import android.provider.Settings
-import android.view.View
-import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Spinner
 import android.widget.Toast
@@ -28,36 +26,19 @@ import retrofit2.converter.gson.GsonConverterFactory
 class FormularioRecargas : AppCompatActivity() {
     private lateinit var binding: ActivityFormularioRecargasBinding
     private lateinit var nfcAdapter: NfcAdapter
-    var sectoresInfo: List<Sectore>? = null
-    var tipoTarjeta: Array<String>? = null
+    private var sectoresInfo: List<Sectore>? = null
+    private var tipoTarjeta: Array<String>? = null
+    private lateinit var subsidiosInfo: List<Subsidio>
+    //var tipoTarjeta: Array<String>? = Array<String>(3) { "" }
+    //val x: IntArray = intArrayOf(1, 2, 3)
+    //val nums = arrayOf<Int>(1, 2, 3, 4, 5)
+    //var arr = IntArray(3) { 10 * (it + 1) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFormularioRecargasBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         //tipoTarjeta = resources.getStringArray(R.array.tipo_tarjeta)
-/*
-        val spinner: Spinner = binding.sTipo
-        if(spinner != null) {
-            val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, tipoTarjeta ?: arrayOf())
-            spinner.adapter = adapter
-
-            spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(
-                    parent: AdapterView<*>?,
-                    view: View?,
-                    position: Int,
-                    id: Long
-                ) {
-                    //Toast.makeText(this@FormularioRecargas, "${getString(R.string.selected_item)} ${tipoTarjeta[position]}", Toast.LENGTH_SHORT).show()
-                }
-
-                override fun onNothingSelected(parent: AdapterView<*>?) {
-
-                }
-            }
-        }*/
-
         CoroutineScope(Dispatchers.IO).launch {
             /*dataStore.edit {preferences->
                 println(preferences[stringPreferencesKey("token")])
@@ -69,34 +50,34 @@ class FormularioRecargas : AppCompatActivity() {
                 val call = getRetrofit().create(APIService::class.java).getTarjetaData()
                 println(call.body())
                 var respuestaConfiguracionTarjeta = call.body()
-                var subsidiosInfo = respuestaConfiguracionTarjeta?.data?.subsidios ?: return@launch
                 sectoresInfo = respuestaConfiguracionTarjeta?.data?.sectores
+                subsidiosInfo = respuestaConfiguracionTarjeta?.data?.subsidios ?: return@launch
                 var nombreSubsidios: MutableList<String> = mutableListOf()
                 for (element in subsidiosInfo) {
                     nombreSubsidios.add(element.nombre)
                 }
+                // myArray.toList()
                 tipoTarjeta = nombreSubsidios.toTypedArray()
+                if (tipoTarjeta!!.size == null) return@launch
                 println("LA RESPUESTA DE LA CONFIGURACION DE LAS TARJETAS")
                 runOnUiThread {
                     val spinner: Spinner = binding.sTipo
                     if(spinner != null) {
                         val adapter = ArrayAdapter(this@FormularioRecargas, android.R.layout.simple_spinner_item, tipoTarjeta ?: arrayOf())
                         spinner.adapter = adapter
-
-                        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                        /*spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                             override fun onItemSelected(
                                 parent: AdapterView<*>?,
                                 view: View?,
                                 position: Int,
                                 id: Long
                             ) {
-                                //Toast.makeText(this@FormularioRecargas, "${getString(R.string.selected_item)} ${tipoTarjeta[position]}", Toast.LENGTH_SHORT).show()
+                                //Toast.makeText(this@FormularioRecargas, "${getString(R.string.selected_item)} ${tipoTarjeta!![position]}", Toast.LENGTH_SHORT).show()
                             }
-
                             override fun onNothingSelected(parent: AdapterView<*>?) {
 
                             }
-                        }
+                        }*/
                     }
                 }
             } catch (e: Exception) {
@@ -133,6 +114,7 @@ class FormularioRecargas : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        println("EN ONRESUME---------------------------")
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         if (nfcAdapter != null){
             try {
@@ -142,13 +124,10 @@ class FormularioRecargas : AppCompatActivity() {
                 return
             }
             if (nfcAdapter.isEnabled) {
-                val launchIntent = Intent(this, this.javaClass)
-                //launchIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                val pendingIntent = PendingIntent.getActivity(this, 0, launchIntent, PendingIntent.FLAG_CANCEL_CURRENT)
-                val filters = arrayOf(IntentFilter(ACTION_TECH_DISCOVERED))
-                val techTypes = arrayOf(arrayOf(MifareClassic::class.java.name))
-                nfcAdapter.enableForegroundDispatch(this, pendingIntent, filters, techTypes)
-                //nfcAdapter.enableReaderMode()
+                if (binding.etNombre.text.toString().isNullOrEmpty()) {
+                    println("ESTA VACIO EL CAMPO NOMBRE")
+                    enableNFCReader()
+                }
             } else {
                 MainScope().launch {
                     Toast.makeText(applicationContext, "NFC Apagado", Toast.LENGTH_LONG).show()
@@ -159,6 +138,28 @@ class FormularioRecargas : AppCompatActivity() {
         } else {
             Toast.makeText(applicationContext, "El dispositivo no soporta NFC", Toast.LENGTH_LONG).show()
         }
+        binding.buttonCancelar.setOnClickListener {
+            binding.etNombre.setText("")
+            binding.etApellidoPaterno.setText("")
+            binding.etApellidoMaterno.setText("")
+            binding.etCelular.setText("")
+            binding.etSaldoDisponible.setText("")
+            binding.etSaldoAgregar.setText("")
+            binding.etCortesia.setText("")
+            binding.etFolio.setText("")
+            binding.etID.setText("")
+            binding.sTipo.setSelection(0)
+            enableNFCReader()
+        }
+    }
+    fun enableNFCReader() {
+        val launchIntent = Intent(this, this.javaClass)
+        //launchIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        val pendingIntent = PendingIntent.getActivity(this, 0, launchIntent, PendingIntent.FLAG_CANCEL_CURRENT)
+        val filters = arrayOf(IntentFilter(ACTION_TECH_DISCOVERED))
+        val techTypes = arrayOf(arrayOf(MifareClassic::class.java.name))
+        nfcAdapter.enableForegroundDispatch(this, pendingIntent, filters, techTypes)
+        //nfcAdapter.enableReaderMode()
     }
     override fun onPause() {
         super.onPause()
@@ -185,7 +186,9 @@ class FormularioRecargas : AppCompatActivity() {
                 if (cardIsNew == true) {
 
                 } else {
-                    readUsedCard()
+                    //readUsedCard()
+                    if (sectoresInfo == null) return
+                    CardNFC.readUsedCard(binding, applicationContext, sectoresInfo!!, subsidiosInfo)
                 }
             }
         } catch (e: Exception) {
@@ -193,13 +196,10 @@ class FormularioRecargas : AppCompatActivity() {
             println("ERROR");
         }
     }
-    private fun readUsedCard() {
+    /*private fun readUsedCard() {
         val bloques = intArrayOf(12, 13, 14, 20, 10, 0, 16)
         var informacionUsuario = ""
         var nombre = ""
-        var saldo = "$"
-        var folio = ""
-        var ID = ""
         if (sectoresInfo == null) {
             Toast.makeText(applicationContext, "No se pudo leer la tarjeta", Toast.LENGTH_LONG).show()
             return
@@ -210,13 +210,21 @@ class FormularioRecargas : AppCompatActivity() {
                 informacionUsuario += bloqueLeido
             }
             if (bloque == 20) {
-                saldo += bloqueLeido
+                binding.etSaldoDisponible.setText("$$bloqueLeido")
             }
             if (bloque == 10) {
-                folio += bloqueLeido
+                binding.etFolio.setText(bloqueLeido)
             }
             if (bloque == 0) {
-                ID += bloqueLeido
+                binding.etID.setText(bloqueLeido)
+            }
+            if (bloque == 16) {
+                // This (i in 0 until subsidiosInfo.size) is the same as:
+                for (i in subsidiosInfo.indices) {
+                    if (bloqueLeido == subsidiosInfo[i].clave) {
+                        binding.sTipo.setSelection(i)
+                    }
+                }
             }
         }
         for (j in 1 until informacionUsuario.split(" ").size - 2) {
@@ -227,12 +235,8 @@ class FormularioRecargas : AppCompatActivity() {
         binding.etNombre.setText(nombre)
         binding.etApellidoPaterno.setText(informacionUsuario.split(" ")[informacionUsuario.split(" ").size - 2])
         binding.etApellidoMaterno.setText(informacionUsuario.split(" ")[informacionUsuario.split(" ").size - 1])
-        binding.etSaldoDisponible.setText(saldo)
-        binding.etFolio.setText(folio)
-        binding.etID.setText(ID)
         binding.etSaldoAgregar.isEnabled = true
         binding.etCortesia.isEnabled = true
-        //binding.sTipo.isEnabled = true
-    }
+    }*/
 
 }
