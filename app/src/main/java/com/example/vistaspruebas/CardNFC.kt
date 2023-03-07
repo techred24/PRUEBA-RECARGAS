@@ -3,41 +3,49 @@ import android.content.Context
 import android.nfc.tech.MifareClassic
 import android.widget.Toast
 import com.example.vistaspruebas.databinding.ActivityFormularioRecargasBinding
+import kotlin.properties.Delegates
 
 class CardNFC {
 
     companion object {
         var  mifareClassicTag: MifareClassic? = null
-        fun write(bloque: Int, nuevaInformacion: String, sectoresArgumento: List<Sectore>) {
-            //String write (short bloque, String newData, ArrayList<Object> sectoresArgumento)
+        var isCardNew = false
 
-            /*
+
+        fun write(bloque: Int, nuevaInformacion: String, sectoresArgumento: List<Sectore>, fn: () -> Unit): Boolean {
             val sector = bloque / 4
-            //ArrayList<Object> sectores = (ArrayList<Object>) ((Map<Object, Object>) configuracionTarjeta.get("config")).get("sectores");
-            //ArrayList<Object> sectores = (ArrayList<Object>) ((Map<Object, Object>) configuracionTarjeta.get("config")).get("sectores");
-            val sectores: ArrayList<Any> = sectoresArgumento
-            val sectorMap =
-                sectores[sector] as Map<Any, Any>
-            val keyString = sectorMap["keyB"] as String?
-            val len = keyString!!.length
-            val authKeyData = ByteArray(len / 2)
-            {
-                var i = 0
-                while (i < len) {
-                    authKeyData.get(i / 2) = ((keyString!![i].digitToIntOrNull(16) ?: -1 shl 4)
-                    + keyString!![i + 1].digitToIntOrNull(16)!! ?: -1).toByte()
-                    i += 2
+            println("Informacion llegando clase NFC escribir: $nuevaInformacion")
+
+            try {
+                if (!(mifareClassicTag?.isConnected == true)) {
+                    fn()
+                    return false
                 }
+                mifareClassicTag?.connect()
+                for (sectorArgumento in sectoresArgumento) {
+                    if (sector == sectorArgumento.sector) {
+                        val keyString = sectorArgumento.keyB
+                        val len = keyString!!.length
+                        var authKeyData = ByteArray(len / 2)
+                        var data = nuevaInformacion.toByteArray()
+                        for (i in 0 until len step 2) {
+                            authKeyData[i / 2] = (((Character.digit(keyString[i], 16).shl(4))
+                                    + Character.digit(keyString[i+1], 16)).toByte());
+                        }
+                        if (isCardNew) authKeyData = MifareClassic.KEY_DEFAULT
+                        var authenticated = mifareClassicTag?.authenticateSectorWithKeyA(sector, authKeyData)
+                        println("ESTA AUTENTICADO PARA ESCRIBIR? $authenticated")
+                        if (authenticated == null) {
+                            mifareClassicTag?.writeBlock(bloque,data)
+                        }
+                    }
+                }
+                mifareClassicTag?.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                println(e.message)
             }
-            val data: ByteArray = newData.getBytes()
-            println(data.size)
-            println("La longitud del arreglo de los datos a escribir")
-            reader.connectReader()
-            reader.connectCard(null)
-            val response: ByteArray =
-                reader.writeDataIntoCard(authKeyData, readerUtil.getAuthCmdForkeyB(), bloque, data)
-            return String(response)
-            */
+            return  false
         }
         fun read(bloque: Int, sectoresArgumento: List<Sectore>): String? {
             if (sectoresArgumento == null) return null
@@ -68,10 +76,10 @@ class CardNFC {
                         if (authenticated == true) {
                             block = mifareClassicTag?.readBlock(bloque)
                             stringResponse = block?.let { String(it, Charsets.US_ASCII) }
-                            mifareClassicTag?.close()
                         }
                     }
                 }
+                mifareClassicTag?.close()
             } catch (e: Exception) {
                 e.printStackTrace()
                 println("ERROR")
@@ -81,32 +89,9 @@ class CardNFC {
                 for (j in block!!.indices) {
                     hexStringBuffer.append(byteToHex(block[j]))
                 }
-                //var cadena = hexStringBuffer.toList()
-                //println(cadena.joinToString(separator = ":"))
-
-                /*var hexStringBuffer = arrayOf<String>("1","2","3","4","5","6","7","8")
-                var cadena = hexStringBuffer.toList()
-                println(cadena.joinToString(separator = "-"))*/
-
-
-
-                /*var hexadecimalString = hexStringBuffer.toString().substring(0, 8).uppercase()
-                var hexadecimalStringCopy = hexStringBuffer.toString().substring(0, 8).uppercase()
-                var UID: MutableList<String> = mutableListOf()
-                var ID = hexStringBuffer.toString().substring(0, 8).uppercase().split("")
-                for (i in 0..ID.size) {
-                    println(" El tamanio del ID: ${ID.size}")
-                    println("El numero del rango: $i")
-                    if (i % 2 != 0) {
-                        println("Dentro del if. Es impar")
-                        hexadecimalString = hexadecimalStringCopy.replaceRange(i, i+1, "${hexadecimalString[i]}:")
-                       //if (i == 7)  null else UID.add("${ID[i]}:")
-                    }
-                }
-                return hexadecimalString*/
-                //return UID.joinToString("")
-                return hexStringBuffer.toString().substring(0, 8).uppercase()
+                return hexStringBuffer.toString().substring(0, 8)
             }
+            //respuesta?.replace("\u0000.*".toRegex(), "")
             return  stringResponse?.replace(Regex("\u0000.*"), "")
         }
         fun readUsedCard(binding: ActivityFormularioRecargasBinding, applicationContext: Context, sectoresInfo: List<Sectore>, subsidiosInfo:List<Subsidio>) {
@@ -118,7 +103,7 @@ class CardNFC {
                 return
             }
             for (bloque in bloques) {
-                val bloqueLeido = CardNFC.read(bloque, sectoresInfo!!)
+                val bloqueLeido = read(bloque, sectoresInfo!!)
                 if (bloque == 12 || bloque == 13 || bloque == 14) {
                     informacionUsuario += bloqueLeido
                 }
@@ -151,16 +136,17 @@ class CardNFC {
             binding.etSaldoAgregar.isEnabled = true
             binding.etCortesia.isEnabled = true
         }
-        fun cardIsNew(sectoresArgumento: List<Sectore>): Boolean? {
-            var respuesta = read(5, sectoresArgumento)
-            respuesta = respuesta?.replace("\u0000.*".toRegex(), "")
-            if (respuesta == null) {
-                return null
+        fun cardIsNew(): Boolean {
+            var isAuthenticated: Boolean? = null
+            try {
+                mifareClassicTag?.connect()
+                val DEFAULT_KEY = MifareClassic.KEY_DEFAULT
+                isAuthenticated = mifareClassicTag?.authenticateSectorWithKeyA(0, DEFAULT_KEY)
+                mifareClassicTag?.close()
+            } catch (e:Exception) {
+              e.printStackTrace()
             }
-            if (respuesta.length <= 15) {
-                return true
-            }
-             return false
+            return (isAuthenticated == true)
         }
         fun byteToHex(num: Byte): String? {
             val hexDigits = CharArray(2)
