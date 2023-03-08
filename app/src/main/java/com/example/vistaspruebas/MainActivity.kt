@@ -61,6 +61,9 @@ class MainActivity : AppCompatActivity() {
                     //println(call.body())
                     //println("Lo que contiene call")
                     if (call.body()?.status == true) {
+                        dataStore.edit {preferences ->
+                            preferences[stringPreferencesKey("idUsuario")] = call.body()?.data?.usuario?.id ?: ""
+                        }
                         saveToken(call.body()?.data?.token)
                         accessApp()
                     } else {

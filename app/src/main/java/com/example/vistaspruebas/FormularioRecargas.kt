@@ -19,9 +19,14 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.vistaspruebas.databinding.ActivityFormularioRecargasBinding
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.net.InetAddress
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.*
 
 class FormularioRecargas : AppCompatActivity() {
     private lateinit var binding: ActivityFormularioRecargasBinding
@@ -141,6 +146,7 @@ class FormularioRecargas : AppCompatActivity() {
             Toast.makeText(applicationContext, "El dispositivo no soporta NFC", Toast.LENGTH_LONG).show()
         }
         binding.buttonCancelar.setOnClickListener {
+            if (!binding.etNombre.isEnabled) return@setOnClickListener
             binding.etNombre.setText("")
             binding.etApellidoPaterno.setText("")
             binding.etApellidoMaterno.setText("")
@@ -151,9 +157,21 @@ class FormularioRecargas : AppCompatActivity() {
             binding.etFolio.setText("")
             binding.etID.setText("")
             binding.sTipo.setSelection(0)
+
+
+            /*binding.etNombre.isEnabled = false
+            binding.etApellidoPaterno.isEnabled = false
+            binding.etApellidoMaterno.isEnabled = false
+            binding.etCelular.isEnabled = false
+            binding.etSaldoAgregar.isEnabled = false
+            binding.etCortesia.isEnabled = false
+            binding.etFolio.isEnabled = false
+            binding.sTipo.isEnabled = false*/
+            habilitaDesabilitaCampos()
             enableNFCReader()
         }
         binding.buttonGuardar.setOnClickListener {
+            if (!binding.etNombre.isEnabled) return@setOnClickListener
             if (sectoresInfo != null) {
                 //                      31 caracteres
                 var datosUsuario = "${binding.etCelular.text.toString()} ${binding.etNombre.text.toString()} ${binding.etApellidoPaterno.text.toString()} ${binding.etApellidoMaterno.text.toString()}"
@@ -162,37 +180,112 @@ class FormularioRecargas : AppCompatActivity() {
                 var infoUser1 = ""
                 var infoUser2 = ""
                 var infoUser3 = ""
-                if (binding.etCelular.text.toString().isNullOrEmpty() || binding.etNombre.text.toString().isNullOrEmpty() || binding.etApellidoPaterno.text.toString().isNullOrEmpty() || binding.etApellidoMaterno.text.toString().isNullOrEmpty()) {
-                    Toast.makeText(applicationContext, "Faltan campos", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
 
-                if (datosUsuario.length <= 32) {
-                    infoUser1 = datosUsuario.substring(0, 16)
-                    infoUser2 = datosUsuario.substring(16)
-                    println("$infoUser1: ${infoUser1.length}")
-                    println("$infoUser2: ${infoUser2.length}")
-                    CardNFC.write(12, infoUser1, sectoresInfo!!, ::muestraMensajeNoHayTarjeta)
-                    //CardNFC.write(13, infoUser2, sectoresInfo!!)
-                } else {
-                    infoUser1 = datosUsuario.substring(0, 16)
-                    infoUser2 = datosUsuario.substring(16, 32)
-                    infoUser3 = datosUsuario.substring(32)
-                    println("$infoUser1: ${infoUser1.length}")
-                    println("$infoUser2: ${infoUser2.length}")
-                    println("$infoUser3: ${infoUser3.length}")
-                    //CardNFC.write(12, infoUser1, sectoresInfo!!)
-                    //CardNFC.write(13, infoUser2, sectoresInfo!!)
-                    //CardNFC.write(14, infoUser3, sectoresInfo!!)
-                }
-                //CardNFC.write(12, "1122334455",sectoresInfo!!)
                 var saldoAgregar = binding.etSaldoAgregar.text.toString()
                 var cortesia = binding.etCortesia.text.toString()
                 var folio = binding.etFolio.text.toString()
                 var tipoTarjetaSeleccionada = binding.sTipo.selectedItem.toString()
-                println("EL TIPO DE TARJETA SELECCIONADA: $tipoTarjetaSeleccionada")
+
+                if (binding.sTipo.selectedItem.toString() == "Adulto") {
+                    Toast.makeText(applicationContext, "Faltan campos por llenar", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                if (binding.etCelular.text.toString().isNullOrEmpty() ||
+                    binding.etNombre.text.toString().isNullOrEmpty() ||
+                    binding.etApellidoPaterno.text.toString().isNullOrEmpty() ||
+                    binding.etApellidoMaterno.text.toString().isNullOrEmpty() ||
+                        saldoAgregar.isNullOrEmpty()
+                        ) {
+                    Toast.makeText(applicationContext, "Faltan campos por llenar", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                if (!CardNFC.tarjetaColocada(::muestraMensajeNoHayTarjeta)) return@setOnClickListener
+
+                var localMachine: InetAddress? = null
+                try {
+                    localMachine = InetAddress.getLocalHost()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                var hostname = localMachine?.hostName ?: ""
+                if (localMachine!!.hostName.length > 16) hostname = hostname.substring(0,16)
+
+
+
+                val dateFormatISO: DateFormat = SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'")
+                val dateISO = Date()
+                var nowISOReduce: String = dateFormatISO.format(dateISO)
+
+
+
+                var usuarioPC = System.getProperty("user.name")
+                if (usuarioPC.length > 16) usuarioPC = usuarioPC.substring(0, 16)
+
+
+                var idUsuario = ""
+                dataStore.data.map { pref ->
+                    idUsuario = pref[stringPreferencesKey("idUsuario")] ?: ""
+                }
+
+
+                // Guardar después que se genere la respuesta del servidor
+                CardNFC.write(10, folio, sectoresInfo!!)
+
+
+                var claveSubsidioFechaEscribir = ""
+                for (i in subsidiosInfo.indices) {
+                    tipoTarjetaSeleccionada == subsidiosInfo[i].nombre
+                    claveSubsidioFechaEscribir += subsidiosInfo[i].clave
+                    claveSubsidioFechaEscribir += getFechaVencimientoSubsidio(subsidiosInfo[i].diasUtiles)
+                }
+
+                if (cortesia.isNullOrEmpty()) cortesia = "0"
+                var saldoParaAgregar = saldoAgregar.toFloat()
+                var saldoParaCortesia = cortesia.toFloat()
+                var saldoTotal = saldoParaAgregar + saldoParaCortesia
+                var saldoEscribir = saldoTotal.toString()
+
+                if (datosUsuario.length <= 32) {
+                    infoUser1 = datosUsuario.substring(0, 16)
+                    infoUser2 = datosUsuario.substring(16)
+                    //println("$infoUser1: ${infoUser1.length}")
+                    //println("$infoUser2: ${infoUser2.length}")
+                    CardNFC.write(12, infoUser1, sectoresInfo!!)
+                    CardNFC.write(13, infoUser2, sectoresInfo!!)
+                } else {
+                    infoUser1 = datosUsuario.substring(0, 16)
+                    infoUser2 = datosUsuario.substring(16, 32)
+                    infoUser3 = datosUsuario.substring(32)
+                    //println("$infoUser1: ${infoUser1.length}")
+                    //println("$infoUser2: ${infoUser2.length}")
+                    //println("$infoUser3: ${infoUser3.length}")
+                    CardNFC.write(12, infoUser1, sectoresInfo!!)
+                    CardNFC.write(13, infoUser2, sectoresInfo!!)
+                    CardNFC.write(14, infoUser3, sectoresInfo!!)
+                }
+                CardNFC.write(4, hostname, sectoresInfo!!)
+                CardNFC.write(5, nowISOReduce, sectoresInfo!!)
+                CardNFC.write(6, usuarioPC, sectoresInfo!!)
+                if (!idUsuario.isNullOrEmpty()) {
+                    CardNFC.write(8, idUsuario.substring(0, 16), sectoresInfo!!)
+                    CardNFC.write(9, idUsuario.substring(16), sectoresInfo!!)
+                }
+                CardNFC.write(16, claveSubsidioFechaEscribir, sectoresInfo!!)
+                CardNFC.write(20, saldoEscribir, sectoresInfo!!)
+                //println("EL TIPO DE TARJETA SELECCIONADA: $tipoTarjetaSeleccionada")
             }
         }
+    }
+    private fun getFechaVencimientoSubsidio(diasUtiles: Int): String? {
+        if (diasUtiles == 0) {
+            return "00000000"
+        }
+        val timeZone = TimeZone.getTimeZone("UTC")
+        val dateFormat: DateFormat = SimpleDateFormat("yyyyMMdd")
+        dateFormat.timeZone = timeZone
+        val date = Date()
+        date.hours = diasUtiles * 24
+        return dateFormat.format(date)
     }
     fun enableNFCReader() {
         val launchIntent = Intent(this, this.javaClass)
@@ -228,14 +321,15 @@ class FormularioRecargas : AppCompatActivity() {
                 CardNFC.isCardNew = cardIsNew
                 println("LA TARJETA ES NUEVA? $cardIsNew")
                 if (cardIsNew == true) {
-                    binding.etNombre.isEnabled = true
+                    habilitaDesabilitaCampos()
+                    /*binding.etNombre.isEnabled = true
                     binding.etApellidoPaterno.isEnabled = true
                     binding.etApellidoMaterno.isEnabled = true
                     binding.etCelular.isEnabled = true
                     binding.etSaldoAgregar.isEnabled = true
                     binding.etCortesia.isEnabled = true
                     binding.etFolio.isEnabled = true
-                    binding.sTipo.isEnabled = true
+                    binding.sTipo.isEnabled = true*/
                 } else {
                     if (sectoresInfo == null) return
                     CardNFC.readUsedCard(binding, applicationContext, sectoresInfo!!, subsidiosInfo)
@@ -248,6 +342,16 @@ class FormularioRecargas : AppCompatActivity() {
     }
     private fun muestraMensajeNoHayTarjeta() {
         Toast.makeText(applicationContext, "Ponga la tarjeta en el lector", Toast.LENGTH_SHORT).show()
+    }
+    private fun habilitaDesabilitaCampos() {
+        binding.etNombre.isEnabled = !binding.etNombre.isEnabled
+        binding.etApellidoPaterno.isEnabled = !binding.etApellidoPaterno.isEnabled
+        binding.etApellidoMaterno.isEnabled = !binding.etApellidoMaterno.isEnabled
+        binding.etCelular.isEnabled = !binding.etCelular.isEnabled
+        binding.etSaldoAgregar.isEnabled = !binding.etSaldoAgregar.isEnabled
+        binding.etCortesia.isEnabled = !binding.etCortesia.isEnabled
+        binding.etFolio.isEnabled = !binding.etFolio.isEnabled
+        binding.sTipo.isEnabled = !binding.sTipo.isEnabled
     }
     /*private fun readUsedCard() {
         val bloques = intArrayOf(12, 13, 14, 20, 10, 0, 16)

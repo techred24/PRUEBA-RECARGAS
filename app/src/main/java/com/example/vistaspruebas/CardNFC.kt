@@ -11,16 +11,18 @@ class CardNFC {
         var  mifareClassicTag: MifareClassic? = null
         var isCardNew = false
 
-
-        fun write(bloque: Int, nuevaInformacion: String, sectoresArgumento: List<Sectore>, fn: () -> Unit): Boolean {
+        fun tarjetaColocada(fn: () -> Unit): Boolean {
+            if ((mifareClassicTag?.isConnected == true)) {
+                return true
+            }
+            fn()
+            return false
+        }
+        fun write(bloque: Int, nuevaInformacion: String, sectoresArgumento: List<Sectore>): Boolean {
             val sector = bloque / 4
             println("Informacion llegando clase NFC escribir: $nuevaInformacion")
 
             try {
-                if (!(mifareClassicTag?.isConnected == true)) {
-                    fn()
-                    return false
-                }
                 mifareClassicTag?.connect()
                 for (sectorArgumento in sectoresArgumento) {
                     if (sector == sectorArgumento.sector) {
@@ -36,7 +38,7 @@ class CardNFC {
                         var authenticated = mifareClassicTag?.authenticateSectorWithKeyA(sector, authKeyData)
                         println("ESTA AUTENTICADO PARA ESCRIBIR? $authenticated")
                         if (authenticated == null) {
-                            mifareClassicTag?.writeBlock(bloque,data)
+                            //mifareClassicTag?.writeBlock(bloque,data)
                         }
                     }
                 }

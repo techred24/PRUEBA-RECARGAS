@@ -87,7 +87,7 @@ data class Subsidio(
     val id: String,
     val clave: String,
     val nombre: String,
-    val diasUtiles: Long,
+    val diasUtiles: Int,
 )
 
 
