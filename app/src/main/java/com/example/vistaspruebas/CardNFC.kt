@@ -8,15 +8,54 @@ import kotlin.properties.Delegates
 class CardNFC {
 
     companion object {
-        var  mifareClassicTag: MifareClassic? = null
+        var mifareClassicTag: MifareClassic? = null
         var isCardNew = false
 
-        fun tarjetaColocada(fn: () -> Unit): Boolean {
+        /*fun tarjetaColocada(fn: () -> Unit): Boolean {
             if ((mifareClassicTag?.isConnected == true)) {
                 return true
             }
             fn()
             return false
+        }*/
+        fun reasignaSectores(sectores: List<Sectore>) {
+            // 3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63
+            try {
+                if (mifareClassicTag?.isConnected != true) {
+                    println("No esta conectado. Esto tiene la variable de la tag: $mifareClassicTag")
+                    return
+                }
+                mifareClassicTag?.connect()
+                sectores.forEach { sector ->
+                    var nuevaInformacionLlaves = sector.keyA + sector.accessBits + sector.keyB
+                    println("Longitud de la cadena: ${nuevaInformacionLlaves.length}")
+                    //blockToSector ( bloque )  -> Regresa el sector
+                    println("Ultimo bloque del sector ${sector.sector}: ${(mifareClassicTag?.sectorToBlock(sector.sector)
+                        ?.plus(3))}  --------- ESTE SERIA EL QUE NECESITO")
+                    val len = nuevaInformacionLlaves.length
+                    var newAuthKeyData = ByteArray(len / 2)
+                    for (i in 0 until len step 2) {
+                        newAuthKeyData[i / 2] = (((Character.digit(nuevaInformacionLlaves[i], 16).shl(4))
+                                + Character.digit(nuevaInformacionLlaves[i+1], 16)).toByte());
+                    }
+                    println("La longitud del ByteArray con las llaves: ${newAuthKeyData.size}  ---- Deberia ser de 16")
+                    //MifareClassic.KEY_DEFAULT
+                    var authenticated = mifareClassicTag?.authenticateSectorWithKeyB(sector.sector, MifareClassic.KEY_DEFAULT)
+                    println("Esta autenticado para cambiar la llave en el bloque ${(mifareClassicTag?.sectorToBlock(sector.sector)
+                        ?.plus(3))} del sector ${sector.sector}: $authenticated")
+                    if (authenticated == true) {
+                        mifareClassicTag?.sectorToBlock(sector.sector)?.plus(3)
+                            ?.let {bloque->
+                                println("Escribiendo las nuevas llaves en el bloque $bloque")
+                                //mifareClassicTag?.writeBlock(bloque, newAuthKeyData)
+                            }
+                    }
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            mifareClassicTag?.close()
         }
         fun write(bloque: Int, nuevaInformacion: String, sectoresArgumento: List<Sectore>): Boolean {
             val sector = bloque / 4
@@ -34,8 +73,8 @@ class CardNFC {
                             authKeyData[i / 2] = (((Character.digit(keyString[i], 16).shl(4))
                                     + Character.digit(keyString[i+1], 16)).toByte());
                         }
-                        if (isCardNew) authKeyData = MifareClassic.KEY_DEFAULT
-                        var authenticated = mifareClassicTag?.authenticateSectorWithKeyA(sector, authKeyData)
+                        //if (isCardNew) authKeyData = MifareClassic.KEY_DEFAULT
+                        var authenticated = mifareClassicTag?.authenticateSectorWithKeyB(sector, authKeyData)
                         println("ESTA AUTENTICADO PARA ESCRIBIR? $authenticated")
                         if (authenticated == null) {
                             //mifareClassicTag?.writeBlock(bloque,data)
@@ -142,6 +181,65 @@ class CardNFC {
             var isAuthenticated: Boolean? = null
             try {
                 mifareClassicTag?.connect()
+
+
+
+
+
+
+
+/*
+                sectores.forEach { sector ->
+                    var nuevaInformacionLlaves = sector.keyA + sector.accessBits + sector.keyB
+                    println("Longitud de la cadena: ${nuevaInformacionLlaves.length}")
+                    //blockToSector ( bloque )  -> Regresa el sector
+                    println("Numero de bloques en el sector ${sector.sector}: ${mifareClassicTag?.getBlockCountInSector(sector.sector)}")
+                    println("Primer bloque del sector ${sector.sector}: ${mifareClassicTag?.sectorToBlock(sector.sector)}")
+                    println("Ultimo bloque del sector ${sector.sector}: ${(mifareClassicTag?.sectorToBlock(sector.sector)
+                        ?.plus(3))}  --------- ESTE SERIA EL QUE NECESITO")
+                    val len = nuevaInformacionLlaves.length
+                    var newAuthKeyData = ByteArray(len / 2)
+                    for (i in 0 until len step 2) {
+                        newAuthKeyData[i / 2] = (((Character.digit(nuevaInformacionLlaves[i], 16).shl(4))
+                                + Character.digit(nuevaInformacionLlaves[i+1], 16)).toByte());
+                    }
+
+                    val keyString = sector.keyB
+                    val length = keyString!!.length
+                    var authKeyData = ByteArray(length / 2)
+                    //var data = nuevaInformacion.toByteArray()
+                    for (i in 0 until length step 2) {
+                        authKeyData[i / 2] = (((Character.digit(keyString[i], 16).shl(4))
+                                + Character.digit(keyString[i+1], 16)).toByte());
+                    }
+
+
+                    println("La longitud del ByteArray con las llaves: ${newAuthKeyData.size}  ---- Deberia ser de 16")
+                    //MifareClassic.KEY_DEFAULT
+                    //var authenticated = mifareClassicTag?.authenticateSectorWithKeyB(sector.sector, MifareClassic.KEY_DEFAULT)
+                    var authenticated = mifareClassicTag?.authenticateSectorWithKeyB(sector.sector, authKeyData)
+
+                    println("Esta autenticado para cambiar la llave en el bloque ${(mifareClassicTag?.sectorToBlock(sector.sector)
+                        ?.plus(3))} del sector ${sector.sector}: $authenticated")
+                    if (authenticated == true) {
+                        mifareClassicTag?.sectorToBlock(sector.sector)?.plus(3)
+                            ?.let {bloque->
+                                println("Escribiendo las nuevas llaves en el bloque $bloque")
+                                //mifareClassicTag?.writeBlock(bloque, newAuthKeyData)
+                            }
+                    }
+                }*/
+
+
+
+
+
+
+
+
+
+
+
                 val DEFAULT_KEY = MifareClassic.KEY_DEFAULT
                 isAuthenticated = mifareClassicTag?.authenticateSectorWithKeyA(0, DEFAULT_KEY)
                 mifareClassicTag?.close()

@@ -10,6 +10,8 @@ import android.nfc.NfcAdapter.ACTION_TECH_DISCOVERED
 import android.nfc.Tag
 import android.nfc.tech.MifareClassic
 import android.os.Bundle
+import android.os.StrictMode
+import android.os.StrictMode.ThreadPolicy
 import android.provider.Settings
 import android.widget.ArrayAdapter
 import android.widget.Spinner
@@ -28,6 +30,7 @@ import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
+
 class FormularioRecargas : AppCompatActivity() {
     private lateinit var binding: ActivityFormularioRecargasBinding
     private lateinit var nfcAdapter: NfcAdapter
@@ -41,6 +44,9 @@ class FormularioRecargas : AppCompatActivity() {
     //var arr = IntArray(3) { 10 * (it + 1) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val policy = ThreadPolicy.Builder().permitAll().build()
+        StrictMode.setThreadPolicy(policy)
+
         binding = ActivityFormularioRecargasBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -199,7 +205,7 @@ class FormularioRecargas : AppCompatActivity() {
                     Toast.makeText(applicationContext, "Faltan campos por llenar", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
-                if (!CardNFC.tarjetaColocada(::muestraMensajeNoHayTarjeta)) return@setOnClickListener
+                //if (!CardNFC.tarjetaColocada(::muestraMensajeNoHayTarjeta)) return@setOnClickListener
 
                 var localMachine: InetAddress? = null
                 try {
@@ -208,8 +214,13 @@ class FormularioRecargas : AppCompatActivity() {
                     e.printStackTrace()
                 }
                 var hostname = localMachine?.hostName ?: ""
-                if (localMachine!!.hostName.length > 16) hostname = hostname.substring(0,16)
-
+                println("Local machine: $localMachine")
+                localMachine?.hostName?.length.let {longitud->
+                    if (longitud != null) {
+                        if (longitud > 16) hostname = hostname.substring(0,16)
+                    }
+                }
+                println("Hostname: $hostname")
 
 
                 val dateFormatISO: DateFormat = SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'")
@@ -228,8 +239,7 @@ class FormularioRecargas : AppCompatActivity() {
                 }
 
 
-                // Guardar después que se genere la respuesta del servidor
-                CardNFC.write(10, folio, sectoresInfo!!)
+
 
 
                 var claveSubsidioFechaEscribir = ""
@@ -245,7 +255,15 @@ class FormularioRecargas : AppCompatActivity() {
                 var saldoTotal = saldoParaAgregar + saldoParaCortesia
                 var saldoEscribir = saldoTotal.toString()
 
-                if (datosUsuario.length <= 32) {
+
+
+                //val filters = arrayOf(IntentFilter(ACTION_TECH_DISCOVERED))
+                /*getActivity(this, 0, launchIntent, PendingIntent.FLAG_CANCEL_CURRENT)
+                val filters = arrayOf(IntentFilter(ACTION_TECH_DISCOVERED))
+                val techTypes = arrayOf(arrayOf(MifareClassic::class.java.name))*/
+                CardNFC.reasignaSectores(sectoresInfo!!)
+
+                /*if (datosUsuario.length <= 32) {
                     infoUser1 = datosUsuario.substring(0, 16)
                     infoUser2 = datosUsuario.substring(16)
                     //println("$infoUser1: ${infoUser1.length}")
@@ -270,9 +288,11 @@ class FormularioRecargas : AppCompatActivity() {
                     CardNFC.write(8, idUsuario.substring(0, 16), sectoresInfo!!)
                     CardNFC.write(9, idUsuario.substring(16), sectoresInfo!!)
                 }
+                // Guardar después que se genere la respuesta del servidor
+                CardNFC.write(10, folio, sectoresInfo!!)
                 CardNFC.write(16, claveSubsidioFechaEscribir, sectoresInfo!!)
                 CardNFC.write(20, saldoEscribir, sectoresInfo!!)
-                //println("EL TIPO DE TARJETA SELECCIONADA: $tipoTarjetaSeleccionada")
+                //println("EL TIPO DE TARJETA SELECCIONADA: $tipoTarjetaSeleccionada")*/
             }
         }
     }
@@ -308,8 +328,16 @@ class FormularioRecargas : AppCompatActivity() {
             if (ACTION_TECH_DISCOVERED == intent.action) {
                 val tag = intent.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG)
                 readMifareClassic(tag)
+
+
+                /*var writingTagFilters: Array<IntentFilter>
+                var tagDetected = IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED)
+                var pendingIntent: PendingIntent = PendingIntent.getActivity(this,0, Intent(this, this.javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0)
+                writingTagFilters = arrayOf(tagDetected)
+                nfcAdapter.enableForegroundDispatch(this,pendingIntent, writingTagFilters, null)*/
             }
         }
+
     }
     private fun readMifareClassic(tag: Tag?) {
         if (tag == null) return
