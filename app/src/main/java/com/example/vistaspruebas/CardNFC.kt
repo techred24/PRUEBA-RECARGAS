@@ -11,20 +11,9 @@ class CardNFC {
         var mifareClassicTag: MifareClassic? = null
         var isCardNew = false
 
-        /*fun tarjetaColocada(fn: () -> Unit): Boolean {
-            if ((mifareClassicTag?.isConnected == true)) {
-                return true
-            }
-            fn()
-            return false
-        }*/
-        fun reasignaSectores(sectores: List<Sectore>) {
+        fun reasignaSectores(sectores: List<Sectore>): Boolean {
             // 3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63
             try {
-                if (mifareClassicTag?.isConnected != true) {
-                    println("No esta conectado. Esto tiene la variable de la tag: $mifareClassicTag")
-                    return
-                }
                 mifareClassicTag?.connect()
                 sectores.forEach { sector ->
                     var nuevaInformacionLlaves = sector.keyA + sector.accessBits + sector.keyB
@@ -49,13 +38,15 @@ class CardNFC {
                                 println("Escribiendo las nuevas llaves en el bloque $bloque")
                                 //mifareClassicTag?.writeBlock(bloque, newAuthKeyData)
                             }
+                    } else {
+                        return false
                     }
                 }
-
             } catch (e: Exception) {
                 e.printStackTrace()
             }
             mifareClassicTag?.close()
+            return true
         }
         fun write(bloque: Int, nuevaInformacion: String, sectoresArgumento: List<Sectore>): Boolean {
             val sector = bloque / 4
@@ -76,8 +67,10 @@ class CardNFC {
                         //if (isCardNew) authKeyData = MifareClassic.KEY_DEFAULT
                         var authenticated = mifareClassicTag?.authenticateSectorWithKeyB(sector, authKeyData)
                         println("ESTA AUTENTICADO PARA ESCRIBIR? $authenticated")
-                        if (authenticated == null) {
+                        if (authenticated == true) {
                             //mifareClassicTag?.writeBlock(bloque,data)
+                        } else {
+                            return false
                         }
                     }
                 }
@@ -85,8 +78,9 @@ class CardNFC {
             } catch (e: Exception) {
                 e.printStackTrace()
                 println(e.message)
+                return  false
             }
-            return  false
+            return true
         }
         fun read(bloque: Int, sectoresArgumento: List<Sectore>): String? {
             if (sectoresArgumento == null) return null
