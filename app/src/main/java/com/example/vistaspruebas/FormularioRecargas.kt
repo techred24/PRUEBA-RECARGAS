@@ -39,6 +39,7 @@ class FormularioRecargas : AppCompatActivity() {
     private lateinit var subsidiosInfo: List<Subsidio>
     var cardIsNew = false
     var nfcWritingMode = false
+    var nfcActivado = false
     //var tipoTarjeta: Array<String>? = Array<String>(3) { "" }
     //val x: IntArray = intArrayOf(1, 2, 3)
     //val nums = arrayOf<Int>(1, 2, 3, 4, 5)
@@ -51,12 +52,7 @@ class FormularioRecargas : AppCompatActivity() {
         binding = ActivityFormularioRecargasBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        //tipoTarjeta = resources.getStringArray(R.array.tipo_tarjeta)
         CoroutineScope(Dispatchers.IO).launch {
-            /*dataStore.edit {preferences->
-                println(preferences[stringPreferencesKey("token")])
-                println("RETRIEVING TOKEN")
-            }*/
             try {
                 var preferences = dataStore.data.first()
                 userToken = preferences[stringPreferencesKey("token")] ?: ""
@@ -78,19 +74,6 @@ class FormularioRecargas : AppCompatActivity() {
                     if(spinner != null) {
                         val adapter = ArrayAdapter(this@FormularioRecargas, android.R.layout.simple_spinner_item, tipoTarjeta ?: arrayOf())
                         spinner.adapter = adapter
-                        /*spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                            override fun onItemSelected(
-                                parent: AdapterView<*>?,
-                                view: View?,
-                                position: Int,
-                                id: Long
-                            ) {
-                                //Toast.makeText(this@FormularioRecargas, "${getString(R.string.selected_item)} ${tipoTarjeta!![position]}", Toast.LENGTH_SHORT).show()
-                            }
-                            override fun onNothingSelected(parent: AdapterView<*>?) {
-
-                            }
-                        }*/
                     }
                 }
             } catch (e: Exception) {
@@ -123,74 +106,50 @@ class FormularioRecargas : AppCompatActivity() {
         binding.sTipo.isEnabled = false
         //focusable
         //enabled
+        binding.buttonCancelar.setOnClickListener {
+            if (!binding.etSaldoAgregar.isEnabled) return@setOnClickListener
+            limpiarCampos()
+
+            desabilitaCampos()
+            nfcWritingMode = false
+            println("TIENE HABILITADO LEER EN PRIMER PLANO: ${nfcActivado}")
+            if (nfcActivado) return@setOnClickListener
+            println("Habilitando el lector desde boton cancelar")
+            enableNFCReader()
+        }
+        binding.buttonGuardar.setOnClickListener {
+            if (!binding.etSaldoAgregar.isEnabled) return@setOnClickListener
+            nfcWritingMode = true
+            if (nfcActivado) return@setOnClickListener
+            println("Habilitando de nuevo el lector")
+            enableNFCReader()
+        }
     }
 
     override fun onResume() {
         super.onResume()
         println("EN ONRESUME---------------------------")
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
-        if (nfcAdapter != null){
-            try {
-                nfcAdapter.isEnabled
-            } catch (e: Exception) {
-                println("ERROR")
-                return
-            }
-            if (nfcAdapter.isEnabled) {
-                // Al inicio llega aqui y el campo nombre está vacío. Si la tarjeta es nueva tambien entra en el if porque los campos estan vacios
-                if (binding.etNombre.text.toString().isNullOrEmpty()) {
-                    println("ESTA VACIO EL CAMPO NOMBRE")
-                    // cardIsNew es false desde un inicio y activa el nfc. Cuando detecta una tarjeta nueva ya no vuelve a activar el lector NFC
-                    if (cardIsNew) return
-                    enableNFCReader()
-                }
-            } else {
+        if (nfcAdapter == null){
+            Toast.makeText(applicationContext, "El dispositivo no soporta NFC", Toast.LENGTH_LONG).show()
+            return
+        }
+            if (!nfcAdapter.isEnabled) {
                 MainScope().launch {
                     Toast.makeText(applicationContext, "NFC Apagado", Toast.LENGTH_LONG).show()
                     delay(2500)
                     startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
                 }
             }
-        } else {
-            Toast.makeText(applicationContext, "El dispositivo no soporta NFC", Toast.LENGTH_LONG).show()
-        }
-        binding.buttonCancelar.setOnClickListener {
-            if (!binding.etNombre.isEnabled) return@setOnClickListener
-            /*binding.etNombre.setText("")
-            binding.etApellidoPaterno.setText("")
-            binding.etApellidoMaterno.setText("")
-            binding.etCelular.setText("")
-            binding.etSaldoDisponible.setText("")
-            binding.etSaldoAgregar.setText("")
-            binding.etCortesia.setText("")
-            binding.etFolio.setText("")
-            binding.etID.setText("")
-            binding.sTipo.setSelection(0)*/
-            limpiarCampos()
+            if (nfcActivado) return
+                // Al inicio llega aqui y el campo nombre está vacío. Si la tarjeta es nueva tambien entra en el if porque los campos estan vacios
+                if (binding.etSaldoAgregar.text.toString().isNullOrEmpty()) {
+                    println("ESTA VACIO EL CAMPO NOMBRE")
+                    // cardIsNew es false desde un inicio y activa el nfc. Cuando detecta una tarjeta nueva ya no vuelve a activar el lector NFC
+                    //if (cardIsNew) return
+                    enableNFCReader()
+                }
 
-
-            /*binding.etNombre.isEnabled = false
-            binding.etApellidoPaterno.isEnabled = false
-            binding.etApellidoMaterno.isEnabled = false
-            binding.etCelular.isEnabled = false
-            binding.etSaldoAgregar.isEnabled = false
-            binding.etCortesia.isEnabled = false
-            binding.etFolio.isEnabled = false
-            binding.sTipo.isEnabled = false*/
-            habilitaDesabilitaCampos()
-            nfcWritingMode = false
-            println("TIENE HABILITADO LEER EN PRIMER PLANO: ${nfcAdapter.isEnabled}")
-            if (nfcAdapter.isEnabled) return@setOnClickListener
-            println("Habilitando el lector desde boton cancelar")
-            enableNFCReader()
-        }
-        binding.buttonGuardar.setOnClickListener {
-            if (!binding.etNombre.isEnabled) return@setOnClickListener
-            nfcWritingMode = true
-            if (nfcAdapter.isEnabled) return@setOnClickListener
-            println("Habilitando de nuevo el lector")
-            enableNFCReader()
-        }
     }
 
     private fun getFechaVencimientoSubsidio(diasUtiles: Int): String? {
@@ -211,18 +170,23 @@ class FormularioRecargas : AppCompatActivity() {
         val filters = arrayOf(IntentFilter(ACTION_TECH_DISCOVERED))
         val techTypes = arrayOf(arrayOf(MifareClassic::class.java.name))
         nfcAdapter.enableForegroundDispatch(this, pendingIntent, filters, techTypes)
+        nfcActivado = true
         //nfcAdapter.enableReaderMode()
+    }
+    fun  disableNFCReader () {
+        nfcAdapter.disableForegroundDispatch(this)
+        nfcActivado = false
     }
     override fun onPause() {
         super.onPause()
-        nfcAdapter.disableForegroundDispatch(this)
+        disableNFCReader()
         //var manager = this.getSystemService(Context.NFC_SERVICE)
     }
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         println("En onNewIntent")
-        if (intent == null) return
-            if (ACTION_TECH_DISCOVERED == intent.action) {
+        //if (intent == null) return
+            if (ACTION_TECH_DISCOVERED == intent?.action) {
                 val tag = intent.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG)
                 if (tag == null) {
                     Toast.makeText(this, "No se pudo leer la tarjeta", Toast.LENGTH_SHORT).show()
@@ -244,21 +208,14 @@ class FormularioRecargas : AppCompatActivity() {
                 CardNFC.isCardNew = cardIsNew
                 println("LA TARJETA ES NUEVA? $cardIsNew")
                 if (cardIsNew) {
-                    habilitaDesabilitaCampos()
-                    nfcAdapter.disableForegroundDispatch(this)
-                    /*binding.etNombre.isEnabled = true
-                    binding.etApellidoPaterno.isEnabled = true
-                    binding.etApellidoMaterno.isEnabled = true
-                    binding.etCelular.isEnabled = true
-                    binding.etSaldoAgregar.isEnabled = true
-                    binding.etCortesia.isEnabled = true
-                    binding.etFolio.isEnabled = true
-                    binding.sTipo.isEnabled = true*/
+                    habilitaCampos()
+                    //disableNFCReader()
                 } else {
-                    if (sectoresInfo == null) return
+                    //if (sectoresInfo == null) return
                     CardNFC.readUsedCard(binding, applicationContext, sectoresInfo!!, subsidiosInfo)
-                    nfcAdapter.disableForegroundDispatch(this)
+                    //disableNFCReader()
                 }
+                disableNFCReader()
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -266,6 +223,36 @@ class FormularioRecargas : AppCompatActivity() {
         }
     }
     private fun writeMifareClassic() {
+        if (cardIsNew) {
+            writeNewCard()
+            return
+        }
+        writeUsedCard()
+    }
+    private fun writeUsedCard () {
+        if (sectoresInfo == null) null
+        var saldoAgregar = binding.etSaldoAgregar.text.toString()
+        var cortesia = binding.etCortesia.text.toString()
+        if (saldoAgregar.toFloat() < 1) {
+            Toast.makeText(this, "El saldo a agregar debe ser igual o mayor a un peso", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (cortesia.isNullOrEmpty()) cortesia = "0"
+        if (cortesia.toFloat() < 0) {
+            Toast.makeText(this, "Saldo de cortesia invalido", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (cortesia.toFloat() > 0 && saldoAgregar.toFloat() < 100) {
+            Toast.makeText(this, "Saldo de cortesia solo valido desde 100 pesos en adelante", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        var saldoParaAgregar = saldoAgregar.toFloat()
+        var saldoParaCortesia = cortesia.toFloat()
+        var saldoTotal = saldoParaAgregar + saldoParaCortesia
+        var saldoEscribir = saldoTotal.toString()
+    }
+    private fun writeNewCard() {
         if (sectoresInfo != null) {
             //                      31 caracteres
             var datosUsuario = "${binding.etCelular.text.toString()} ${binding.etNombre.text.toString()} ${binding.etApellidoPaterno.text.toString()} ${binding.etApellidoMaterno.text.toString()}"
@@ -302,7 +289,7 @@ class FormularioRecargas : AppCompatActivity() {
             }
             if (localMachine?.hostName?.length == null) {
                 Toast.makeText(this, "Algo salio mal al intentar escribir en la tarjeta", Toast.LENGTH_LONG).show()
-                habilitaDesabilitaCampos()
+                desabilitaCampos()
                 limpiarCampos()
                 nfcWritingMode = false
                 return
@@ -331,8 +318,6 @@ class FormularioRecargas : AppCompatActivity() {
 
 
 
-
-
             var claveSubsidioFechaEscribir = ""
             for (i in subsidiosInfo.indices) {
                 if (tipoTarjetaSeleccionada == subsidiosInfo[i].nombre) {
@@ -342,7 +327,7 @@ class FormularioRecargas : AppCompatActivity() {
             }
             if (claveSubsidioFechaEscribir.isEmpty()) {
                 Toast.makeText(this, "Algo salio mal al intentar escribir en la tarjeta", Toast.LENGTH_LONG).show()
-                habilitaDesabilitaCampos()
+                desabilitaCampos()
                 limpiarCampos()
                 nfcWritingMode = false
                 return
@@ -403,22 +388,35 @@ class FormularioRecargas : AppCompatActivity() {
             seEscribioBien = CardNFC.write(16, claveSubsidioFechaEscribir, sectoresInfo!!)
             seEscribioBien = CardNFC.write(20, saldoEscribir, sectoresInfo!!)
             //println("EL TIPO DE TARJETA SELECCIONADA: $tipoTarjetaSeleccionada")*/
-            habilitaDesabilitaCampos()
+            desabilitaCampos()
             limpiarCampos()
             nfcWritingMode = false
             Toast.makeText(applicationContext, "Tarjeta Dada de alta correctamente", Toast.LENGTH_LONG).show()
         }
     }
-    private fun habilitaDesabilitaCampos() {
-        binding.etNombre.isEnabled = !binding.etNombre.isEnabled
-        binding.etApellidoPaterno.isEnabled = !binding.etApellidoPaterno.isEnabled
-        binding.etApellidoMaterno.isEnabled = !binding.etApellidoMaterno.isEnabled
-        binding.etCelular.isEnabled = !binding.etCelular.isEnabled
-        binding.etSaldoAgregar.isEnabled = !binding.etSaldoAgregar.isEnabled
-        binding.etCortesia.isEnabled = !binding.etCortesia.isEnabled
-        binding.etFolio.isEnabled = !binding.etFolio.isEnabled
-        binding.sTipo.isEnabled = !binding.sTipo.isEnabled
+
+
+    private fun habilitaCampos() {
+        binding.etNombre.isEnabled = true
+        binding.etApellidoPaterno.isEnabled = true
+        binding.etApellidoMaterno.isEnabled = true
+        binding.etCelular.isEnabled = true
+        binding.etSaldoAgregar.isEnabled = true
+        binding.etCortesia.isEnabled = true
+        binding.etFolio.isEnabled = true
+        binding.sTipo.isEnabled = true
     }
+    private fun desabilitaCampos() {
+        binding.etNombre.isEnabled = false
+        binding.etApellidoPaterno.isEnabled = false
+        binding.etApellidoMaterno.isEnabled = false
+        binding.etCelular.isEnabled = false
+        binding.etSaldoAgregar.isEnabled = false
+        binding.etCortesia.isEnabled = false
+        binding.etFolio.isEnabled = false
+        binding.sTipo.isEnabled = false
+    }
+
     private fun limpiarCampos() {
         binding.etNombre.setText("")
         binding.etApellidoPaterno.setText("")
@@ -431,47 +429,4 @@ class FormularioRecargas : AppCompatActivity() {
         binding.etID.setText("")
         binding.sTipo.setSelection(0)
     }
-    /*private fun readUsedCard() {
-        val bloques = intArrayOf(12, 13, 14, 20, 10, 0, 16)
-        var informacionUsuario = ""
-        var nombre = ""
-        if (sectoresInfo == null) {
-            Toast.makeText(applicationContext, "No se pudo leer la tarjeta", Toast.LENGTH_LONG).show()
-            return
-        }
-        for (bloque in bloques) {
-            val bloqueLeido = CardNFC.read(bloque, sectoresInfo!!)
-            if (bloque == 12 || bloque == 13 || bloque == 14) {
-                informacionUsuario += bloqueLeido
-            }
-            if (bloque == 20) {
-                binding.etSaldoDisponible.setText("$$bloqueLeido")
-            }
-            if (bloque == 10) {
-                binding.etFolio.setText(bloqueLeido)
-            }
-            if (bloque == 0) {
-                binding.etID.setText(bloqueLeido)
-            }
-            if (bloque == 16) {
-                // This (i in 0 until subsidiosInfo.size) is the same as:
-                for (i in subsidiosInfo.indices) {
-                    if (bloqueLeido == subsidiosInfo[i].clave) {
-                        binding.sTipo.setSelection(i)
-                    }
-                }
-            }
-        }
-        for (j in 1 until informacionUsuario.split(" ").size - 2) {
-            nombre += " " + informacionUsuario.split(" ")[j]
-            nombre = nombre.trim()
-        }
-        binding.etCelular.setText(informacionUsuario.split(" ")[0])
-        binding.etNombre.setText(nombre)
-        binding.etApellidoPaterno.setText(informacionUsuario.split(" ")[informacionUsuario.split(" ").size - 2])
-        binding.etApellidoMaterno.setText(informacionUsuario.split(" ")[informacionUsuario.split(" ").size - 1])
-        binding.etSaldoAgregar.isEnabled = true
-        binding.etCortesia.isEnabled = true
-    }*/
-
 }
