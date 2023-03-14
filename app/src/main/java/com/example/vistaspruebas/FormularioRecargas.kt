@@ -231,8 +231,12 @@ class FormularioRecargas : AppCompatActivity() {
     }
     private fun writeUsedCard () {
         if (sectoresInfo == null) null
+        var saldoActualEnTarjeta =  if (CardNFC.read(20, sectoresInfo!!) == null) { return } else CardNFC.read(20, sectoresInfo!!)?.toFloat()
         var saldoAgregar = binding.etSaldoAgregar.text.toString()
         var cortesia = binding.etCortesia.text.toString()
+        if (saldoAgregar.isNullOrEmpty()) {
+            Toast.makeText(this, "Faltan campos por llenar", Toast.LENGTH_LONG).show()
+        }
         if (saldoAgregar.toFloat() < 1) {
             Toast.makeText(this, "El saldo a agregar debe ser igual o mayor a un peso", Toast.LENGTH_LONG).show()
             return
@@ -250,7 +254,9 @@ class FormularioRecargas : AppCompatActivity() {
         var saldoParaAgregar = saldoAgregar.toFloat()
         var saldoParaCortesia = cortesia.toFloat()
         var saldoTotal = saldoParaAgregar + saldoParaCortesia
-        var saldoEscribir = saldoTotal.toString()
+        var saldoEscribir = (saldoActualEnTarjeta?.plus(saldoTotal))
+        if (saldoEscribir == null) return
+        CardNFC.write(20, saldoEscribir.toString(), sectoresInfo!!)
     }
     private fun writeNewCard() {
         if (sectoresInfo != null) {
@@ -354,6 +360,7 @@ class FormularioRecargas : AppCompatActivity() {
             var saldoEscribir = saldoTotal.toString()
 
 
+
             CardNFC.reasignaSectores(sectoresInfo!!)
 
 
@@ -395,6 +402,16 @@ class FormularioRecargas : AppCompatActivity() {
         }
     }
 
+    private fun solicitaCrearTarjeta() {
+        /*val userCredencials: MutableMap<String, String> = mutableMapOf(
+            "usuario" to user,
+            "contrasena" to password
+        )*/
+        //CoroutineScope(Dispatchers.IO).launch
+        CoroutineScope(Dispatchers.IO).launch {
+
+        }
+    }
 
     private fun habilitaCampos() {
         binding.etNombre.isEnabled = true

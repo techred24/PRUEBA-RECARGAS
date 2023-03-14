@@ -26,4 +26,8 @@ interface APIService {
     @GET("configuraciontarjetas/pc")
     //@GET("config/tarjeta")
     suspend fun getTarjetaData() : Response<TarjetaResponse>
+
+
+    @POST("tarjeta")
+    suspend fun requestToAddAndChargeCard(@Body cardData: MutableMap<String, String>): Response<*>
 }

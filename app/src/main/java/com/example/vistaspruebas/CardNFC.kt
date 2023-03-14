@@ -96,12 +96,6 @@ class CardNFC {
                         val keyString = sectorArgumento.keyA
                         val len = keyString!!.length
                         var authKeyData = ByteArray(len / 2)
-                        /*var i = 0
-                         while (i < len) {
-                             authKeyData[i / 2] = ((((keyString[i].digitToIntOrNull(16)
-                                 ?: (-1 shl 4)) + keyString[i + 1].digitToIntOrNull(16)!!) ?: -1)).toByte()
-                             i += 2
-                         }*/
                         for (i in 0 until len step 2) {
                             authKeyData[i / 2] = (((Character.digit(keyString[i], 16).shl(4))
                                     + Character.digit(keyString[i+1], 16)).toByte());
