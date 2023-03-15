@@ -242,5 +242,12 @@ class CardNFC {
             hexDigits[1] = Character.forDigit((num.toInt().and(0xF)), 16)
             return String(hexDigits)
         }
+        fun consigueIdTarjeta(sectores: List<Sectore>):String {
+            var idTarjetaParte1 = read(1, sectores)
+            var idTarjetaParte2 = read(2, sectores)
+
+            var idCompleto = "$idTarjetaParte1$idTarjetaParte2".replace("\u0000.*".toRegex(), "")
+            return idCompleto
+        }
     }
 }

@@ -23,12 +23,16 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import okhttp3.OkHttpClient
+import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.net.InetAddress
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
+
+
+
 
 
 class FormularioRecargas : AppCompatActivity() {
@@ -256,7 +260,48 @@ class FormularioRecargas : AppCompatActivity() {
         var saldoTotal = saldoParaAgregar + saldoParaCortesia
         var saldoEscribir = (saldoActualEnTarjeta?.plus(saldoTotal))
         if (saldoEscribir == null) return
-        CardNFC.write(20, saldoEscribir.toString(), sectoresInfo!!)
+        val dateFormat: DateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+        val date = Date()
+        var userId = ""
+        dataStore.data.map { preferences ->
+            userId = preferences[stringPreferencesKey("idUsuario")] ?: ""
+        }
+        var idTarjeta = CardNFC.consigueIdTarjeta(sectoresInfo!!)
+        var localMachine: InetAddress? = null
+        try {
+            localMachine = InetAddress.getLocalHost()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return
+        }
+        var hostname = localMachine?.hostName ?: ""
+        var cardPayload: MutableMap<String, String> = mutableMapOf(
+            "saldo"  to saldoTotal.toString(),
+            "saldocortesia" to saldoParaCortesia.toString(),
+            "fechaaltaLector" to dateFormat.format(date),
+            "usuario" to userId,
+            "usuarioPc" to System.getProperty("user.name"),
+            "tarjeta" to idTarjeta,
+            "idMaquina" to hostname
+        )
+        try {
+            solicitaRecargarTarjeta(cardPayload)
+            CardNFC.write(20, saldoEscribir.toString(), sectoresInfo!!)
+        } catch (e:Exception) {
+            Toast.makeText(this, "Algo salió mal", Toast.LENGTH_LONG).show()
+            desabilitaCampos()
+            limpiarCampos()
+            nfcWritingMode = false
+        }
+    }
+    @Throws(Exception::class)
+    private fun solicitaRecargarTarjeta(cardPayload: MutableMap<String, String>): Boolean {
+        CoroutineScope(Dispatchers.IO).launch {
+            var response =  getRetrofit().create(APIService::class.java).requestToChargeCard(cardPayload)
+            if (!response.isSuccessful) throw Exception("Ocurrió un error")
+            println("Lo que viene el el cuerpo: ${response.body()}")
+        }
+        return true
     }
     private fun writeNewCard() {
         if (sectoresInfo != null) {
@@ -325,8 +370,12 @@ class FormularioRecargas : AppCompatActivity() {
 
 
             var claveSubsidioFechaEscribir = ""
+            var claveSubsidio = ""
+            var diasUtiles = 0
             for (i in subsidiosInfo.indices) {
                 if (tipoTarjetaSeleccionada == subsidiosInfo[i].nombre) {
+                    diasUtiles = subsidiosInfo[i].diasUtiles
+                    claveSubsidio = subsidiosInfo[i].clave
                     claveSubsidioFechaEscribir += subsidiosInfo[i].clave
                     claveSubsidioFechaEscribir += getFechaVencimientoSubsidio(subsidiosInfo[i].diasUtiles)
                 }
@@ -358,8 +407,37 @@ class FormularioRecargas : AppCompatActivity() {
             var saldoParaCortesia = cortesia.toFloat()
             var saldoTotal = saldoParaAgregar + saldoParaCortesia
             var saldoEscribir = saldoTotal.toString()
-
-
+            var userId = ""
+            dataStore.data.map { preferences ->
+                userId = preferences[stringPreferencesKey("idUsuario")] ?: ""
+            }
+            var idFabrica = CardNFC.read(0, sectoresInfo!!) ?: ""
+            val dateFormat: DateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+            val date = Date()
+            var cardPayload = mutableMapOf(
+                "nombre" to binding.etNombre.text.toString(),
+                "apellidos" to "${binding.etApellidoPaterno.text.toString()} ${binding.etApellidoMaterno.text.toString()}",
+                "celular" to binding.etCelular.text.toString(),
+                "saldo" to saldoEscribir,
+                "fechaaltaLector" to dateFormat.format(date),
+                "usuarioalta" to userId,
+                "usuarioPc" to System.getProperty("user.name"),
+                "claveSub" to claveSubsidio,
+                "idFabrica" to idFabrica
+            )
+            if (diasUtiles > 0) {
+                cardPayload.put("fechaVencimiento", getFechaVencimientoSubsidio(diasUtiles))
+            }
+            cardPayload.put("idMaquina", hostname)
+            try {
+                solicitaCrearTarjetaRecargar(cardPayload)
+            } catch (e: Exception) {
+                desabilitaCampos()
+                limpiarCampos()
+                nfcWritingMode = false
+                Toast.makeText(this, "Ocurrió un error al intentar registrar la tarjeta", Toast.LENGTH_LONG).show()
+                return
+            }
 
             CardNFC.reasignaSectores(sectoresInfo!!)
 
@@ -401,16 +479,23 @@ class FormularioRecargas : AppCompatActivity() {
             Toast.makeText(applicationContext, "Tarjeta Dada de alta correctamente", Toast.LENGTH_LONG).show()
         }
     }
-
-    private fun solicitaCrearTarjeta() {
-        /*val userCredencials: MutableMap<String, String> = mutableMapOf(
-            "usuario" to user,
-            "contrasena" to password
-        )*/
+    @Throws(Exception::class)
+    private fun solicitaCrearTarjetaRecargar(cardPayload: MutableMap<String, String>): MutableMap<String, String> {
         //CoroutineScope(Dispatchers.IO).launch
+        //MutableMap<String, String> = mutableMapOf
+        var respuesta: MutableMap<String, String> = mutableMapOf()
         CoroutineScope(Dispatchers.IO).launch {
-
+            //getRetrofit().create(APIService::class.java)
+            var response: Response<TarjetaCreadaResponse> = getRetrofit().create(APIService::class.java).requestToAddAndChargeCard(cardPayload)
+            println("Fue exitosa la solicitud: ${response.isSuccessful}")
+            if (!response.isSuccessful) throw Exception("Ocurrió un error la intentar registrar la tarjera")
+            if (response.body()?.message == "Requer Admin Role") throw Exception("Rol de usuario no autorizado para realizar la operación")
+            println(response.body())
+            if (response.body()?.data?.id == null || response.body()?.data?.folio == null) throw Exception("Ocurrió un error al intetar registrar la tarjeta")
+            respuesta.put("id", response.body()?.data?.id ?: "")
+            respuesta.put("folio", response.body()?.data?.folio ?: "")
         }
+        return respuesta
     }
 
     private fun habilitaCampos() {

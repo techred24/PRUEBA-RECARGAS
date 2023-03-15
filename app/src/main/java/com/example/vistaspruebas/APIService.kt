@@ -29,5 +29,8 @@ interface APIService {
 
 
     @POST("tarjeta")
-    suspend fun requestToAddAndChargeCard(@Body cardData: MutableMap<String, String>): Response<*>
+    suspend fun requestToAddAndChargeCard(@Body cardData: MutableMap<String, String>): Response<TarjetaCreadaResponse>
+
+    @POST("recargasaldo")
+    suspend fun requestToChargeCard(@Body cardData: MutableMap<String, String>): Response<*>
 }

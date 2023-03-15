@@ -91,6 +91,16 @@ data class Subsidio(
 )
 
 
+data class TarjetaCreadaResponse(
+    val status: Boolean,
+    val data: DatosTarjetaCreada,
+    val message: String,
+)
+
+data class DatosTarjetaCreada(
+    val id: String,
+    val folio: String,
+)
 
 
 
